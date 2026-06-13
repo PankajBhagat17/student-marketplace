@@ -8,7 +8,8 @@ class Listing extends Model {
   public price!: number;
   public category!: string;
   public seller_email!: string;
-  public imageUrl!: string; // <-- NEW: Added image URL
+  public seller_phone?: string; // <-- NEW: Added phone number
+  public imageUrl!: string; 
 }
 
 Listing.init({
@@ -33,9 +34,14 @@ Listing.init({
     type: DataTypes.STRING,
     allowNull: false,
   },
+  // --- NEW PHONE FIELD ---
+  seller_phone: {
+    type: DataTypes.STRING,
+    allowNull: true, // Set to true so old listings without numbers don't crash
+  },
   imageUrl: {
     type: DataTypes.STRING,
-    allowNull: true, // true, so users can still post without an image if they want
+    allowNull: true, 
   }
 }, {
   sequelize,

@@ -59,13 +59,20 @@ app.post('/api/listings', authenticateToken, upload.single('image'), async (req:
     const { title, price, category } = req.body;
     const seller_email = req.user?.email || 'unknown@university.edu';
     
+    // --- NEW: Look up the user in the database to get their phone number ---
+    const currentUser: any = await User.findOne({ where: { email: seller_email } });
+    const seller_phone = currentUser?.phone_number || null;
+    // -----------------------------------------------------------------------
+
     const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
+    // Save the new listing with the phone number attached
     const newListing = await Listing.create({
       title,
       price,
       category,
       seller_email,
+      seller_phone, // <-- NEW: Added to the database creation!
       imageUrl
     });
 
@@ -83,7 +90,7 @@ app.delete('/api/listings/:id', authenticateToken, async (req: AuthRequest, res)
     const userEmail = req.user?.email;
 
     // 1. Find the listing in the database
-    const listing = await Listing.findByPk(listingId);
+    const listing: any = await Listing.findByPk(listingId);
 
     if (!listing) {
       return res.status(404).json({ error: 'Listing not found' });
