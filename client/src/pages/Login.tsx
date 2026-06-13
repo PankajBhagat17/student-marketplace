@@ -15,7 +15,7 @@ export default function Login() {
     setError(''); 
 
     try {
-      const response = await axios.post('http://localhost:5001/api/auth/login', {
+      const response = await axios.post('https://student-marketplace-ho49.onrender.com/api/auth/login', {
         email,
         password,
       });

@@ -29,12 +29,12 @@ export default function Dashboard() {
         return;
       }
       try {
-        const userResponse = await axios.get('http://localhost:5001/api/dashboard-data', {
+        const userResponse = await axios.get('https://student-marketplace-ho49.onrender.com/api/dashboard-data', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setUser(userResponse.data.userThatRequestedThis);
 
-        const listingsResponse = await axios.get('http://localhost:5001/api/listings', {
+        const listingsResponse = await axios.get('https://student-marketplace-ho49.onrender.com/api/listings', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setListings(listingsResponse.data);
@@ -60,7 +60,7 @@ export default function Dashboard() {
         formData.append('image', imageFile); 
       }
 
-      const response = await axios.post('http://localhost:5001/api/listings', formData, {
+      const response = await axios.post('https://student-marketplace-ho49.onrender.com/api/listings', formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -84,7 +84,7 @@ export default function Dashboard() {
     
     const token = localStorage.getItem('token');
     try {
-      await axios.delete(`http://localhost:5001/api/listings/${id}`, {
+      await axios.delete(`https://student-marketplace-ho49.onrender.com/api/listings/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -238,7 +238,7 @@ export default function Dashboard() {
                 >
                   {item.imageUrl ? (
                     <img 
-                      src={`http://localhost:5001${item.imageUrl}`} 
+                      src={`https://student-marketplace-ho49.onrender.com${item.imageUrl}`} 
                       alt={item.title} 
                       style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', marginBottom: '15px' }}
                     />
