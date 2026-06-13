@@ -2,7 +2,10 @@
 import { DataTypes, Model } from 'sequelize';
 import sequelize from '../database';
 
-class User extends Model {}
+class User extends Model {
+  // TypeScript declaration so the server knows this property exists
+  public phone_number?: string; 
+}
 
 User.init(
   {
@@ -39,6 +42,11 @@ User.init(
     last_name: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    // --- NEW PHONE NUMBER FIELD ---
+    phone_number: {
+      type: DataTypes.STRING,
+      allowNull: true, // Set to true so older users without phone numbers don't break the database
     },
   },
   {

@@ -100,6 +100,18 @@ export default function Dashboard() {
     navigate('/login');
   };
 
+  // --- CONTACT LOGIC ---
+  const handleWhatsAppContact = (sellerPhone: string, itemTitle: string) => {
+    const message = encodeURIComponent(`Hi! I saw your listing for "${itemTitle}" on the PCCOE Student Marketplace. Is it still available?`);
+    window.open(`https://wa.me/${sellerPhone}?text=${message}`, '_blank');
+  };
+
+  const handleEmailContact = (sellerEmail: string, itemTitle: string) => {
+    const subject = encodeURIComponent(`Interested in buying: ${itemTitle}`);
+    const body = encodeURIComponent(`Hi!\n\nI saw your listing for "${itemTitle}" on the Student Marketplace and I am interested in buying it. Let me know when and where we can meet up!`);
+    window.location.href = `mailto:${sellerEmail}?subject=${subject}&body=${body}`;
+  };
+
   // The Magic Filter Logic
   const filteredListings = listings.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -118,9 +130,7 @@ export default function Dashboard() {
         <h2>Student Marketplace | PCCOE</h2>
         <div className="user-info">
           {user && <span>Logged in: <strong>{user.college_domain}</strong></span>}
-          <button onClick={handleLogout} className="btn-danger">
-            Log Out
-          </button>
+          <button onClick={handleLogout} className="btn-danger">Log Out</button>
         </div>
       </div>
 
@@ -132,57 +142,24 @@ export default function Dashboard() {
         <div className="create-listing-panel">
           <h3>Post an Item</h3>
           <form onSubmit={handleCreateListing}>
-            <input 
-              type="text" 
-              className="form-input" 
-              placeholder="Item Title" 
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              required 
-            />
-            <input 
-              type="number" 
-              className="form-input" 
-              placeholder="Price (₹)" 
-              value={newPrice}
-              onChange={(e) => setNewPrice(e.target.value)}
-              required 
-            />
-            <select 
-              className="form-input"
-              value={newPostCategory}
-              onChange={(e) => setNewPostCategory(e.target.value)}
-            >
+            <input type="text" className="form-input" placeholder="Item Title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} required />
+            <input type="number" className="form-input" placeholder="Price (₹)" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} required />
+            <select className="form-input" value={newPostCategory} onChange={(e) => setNewPostCategory(e.target.value)}>
               <option value="Textbooks">Textbooks</option>
               <option value="Electronics">Electronics</option>
               <option value="Dorm Essentials">Dorm Essentials</option>
             </select>
             
-            <input 
-              type="file" 
-              id="image-upload"
-              accept="image/*" 
-              className="form-input" 
-              onChange={(e) => setImageFile(e.target.files ? e.target.files[0] : null)}
-              style={{ padding: '8px', cursor: 'pointer' }}
-            />
+            <input type="file" id="image-upload" accept="image/*" className="form-input" onChange={(e) => setImageFile(e.target.files ? e.target.files[0] : null)} style={{ padding: '8px', cursor: 'pointer' }} />
 
-            {/* --- NEW: Live Image Preview --- */}
             {imageFile && (
               <div style={{ marginTop: '10px', textAlign: 'center', marginBottom: '15px' }}>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text)', marginBottom: '5px' }}>Image Preview:</p>
-                <img 
-                  src={URL.createObjectURL(imageFile)} 
-                  alt="Preview" 
-                  style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px', border: '2px dashed var(--primary)' }}
-                />
+                <img src={URL.createObjectURL(imageFile)} alt="Preview" style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px', border: '2px dashed var(--primary)' }} />
               </div>
             )}
-            {/* ------------------------------- */}
 
-            <button type="submit" className="btn-primary">
-              Create Listing
-            </button>
+            <button type="submit" className="btn-primary">Create Listing</button>
           </form>
         </div>
 
@@ -191,23 +168,9 @@ export default function Dashboard() {
           
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
             <h3 style={{ margin: 0 }}>Recent Listings</h3>
-            
-            {/* Search & Filter Bar UI */}
             <div style={{ display: 'flex', gap: '10px', width: '60%' }}>
-              <input 
-                type="text" 
-                className="form-input" 
-                placeholder="Search items..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ margin: 0, flex: 1 }}
-              />
-              <select 
-                className="form-input"
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                style={{ margin: 0, width: '160px' }}
-              >
+              <input type="text" className="form-input" placeholder="Search items..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ margin: 0, flex: 1 }} />
+              <select className="form-input" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={{ margin: 0, width: '160px' }}>
                 <option value="All">All Categories</option>
                 <option value="Textbooks">Textbooks</option>
                 <option value="Electronics">Electronics</option>
@@ -217,59 +180,67 @@ export default function Dashboard() {
           </div>
 
           <div className="listings-grid">
-            
             {filteredListings.length === 0 ? (
               <p style={{ color: 'var(--text)' }}>No items found matching your search.</p>
             ) : (
-              // --- NEW: Added 'index' to the map function for staggered animations ---
               filteredListings.map((item, index) => (
                 <motion.div 
                   key={item.id} 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ 
-                    duration: 0.4, 
-                    delay: index * 0.1, // Stagger effect based on item position
-                    type: "spring", 
-                    stiffness: 300 
-                  }}
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: index * 0.1, type: "spring", stiffness: 300 }}
                   whileHover={{ y: -5, scale: 1.02, boxShadow: "0px 10px 20px rgba(0,0,0,0.2)" }}
                   className="item-card"
                 >
                   {item.imageUrl ? (
-                    <img 
-                      src={`https://student-marketplace-ho49.onrender.com${item.imageUrl}`} 
-                      alt={item.title} 
-                      style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', marginBottom: '15px' }}
-                    />
+                    <img src={`https://student-marketplace-ho49.onrender.com${item.imageUrl}`} alt={item.title} style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', marginBottom: '15px' }} />
                   ) : (
-                    <div className="item-image-empty">
-                      No Image
-                    </div>
+                    <div className="item-image-empty">No Image</div>
                   )}
 
                   <h4 style={{ margin: '10px 0', color: 'var(--text-h)' }}>{item.title}</h4>
                   <p className="item-price">₹{item.price}</p>
-                  <span className="item-badge">
-                    {item.category}
-                  </span>
+                  <span className="item-badge">{item.category}</span>
+                  
                   <p style={{ fontSize: '0.75rem', color: 'var(--text)', marginTop: '10px' }}>
                     Seller: {item.seller_email}
                   </p>
 
+                  {/* Show DELETE button if user owns the item */}
                   {user && user.email === item.seller_email && (
-                    <button 
-                      onClick={() => handleDelete(item.id)}
-                      className="btn-danger"
-                      style={{ marginTop: '15px', width: '100%', fontSize: '0.85rem' }}
-                    >
+                    <button onClick={() => handleDelete(item.id)} className="btn-danger" style={{ marginTop: '15px', width: '100%', fontSize: '0.85rem' }}>
                       Delete Item
                     </button>
                   )}
+
+                  {/* Show COMPREHENSIVE CONTACT PANEL if user DOES NOT own the item */}
+                  {user && user.email !== item.seller_email && (
+                    <div style={{ marginTop: '15px', borderTop: '1px solid #333', paddingTop: '10px' }}>
+                      
+                      {/* Direct Phone Number Display */}
+                      <p style={{ fontSize: '0.8rem', color: '#a0a0b0', marginBottom: '10px', textAlign: 'center' }}>
+                        📞 <strong>{item.seller_phone || '919876543210'}</strong>
+                      </p>
+                      
+                      {/* Side-by-Side Action Buttons */}
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                          onClick={() => handleWhatsAppContact(item.seller_phone || '919876543210', item.title)}
+                          style={{ flex: 1, padding: '8px', background: '#25D366', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}
+                        >
+                          💬 WhatsApp
+                        </button>
+                        <button 
+                          onClick={() => handleEmailContact(item.seller_email, item.title)}
+                          style={{ flex: 1, padding: '8px', background: '#b185ff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}
+                        >
+                          ✉️ Email
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                 </motion.div>
               ))
             )}
-
           </div>
         </div>
       </div>

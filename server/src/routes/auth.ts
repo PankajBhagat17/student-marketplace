@@ -9,33 +9,35 @@ const router = Router();
 // === REGISTER ROUTE ===
 router.post('/register', async (req, res): Promise<any> => {
   try {
-    const { email, password, first_name, last_name } = req.body;
+    // 1. UPDATED: Extracted phone_number from the incoming request body
+    const { email, password, first_name, last_name, phone_number } = req.body;
 
-    // 1. Check for required fields
+    // Check for required fields
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required.' });
     }
 
-    // 2. Check if user already exists
+    // Check if user already exists
     const existingUser = await User.findOne({ where: { email: email.toLowerCase() } });
     if (existingUser) {
       return res.status(400).json({ error: 'Email is already registered.' });
     }
 
-    // 3. Hash the password for security
+    // Hash the password for security
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(password, salt);
     
-    // Extract the college domain (e.g., pccoe.edu from bhumi@pccoe.edu)
+    // Extract the college domain
     const college_domain = email.split('@')[1] || 'unknown';
 
-    // 4. Save to the database
+    // 2. UPDATED: Save the phone_number to the database alongside the other data
     const newUser = await User.create({
       email: email.toLowerCase(),
       password_hash,
       first_name: first_name || 'New',
       last_name: last_name || 'Student',
-      college_domain
+      college_domain,
+      phone_number // <-- Saves to Neon!
     });
 
     return res.status(201).json({ message: 'User registered successfully!' });

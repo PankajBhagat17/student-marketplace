@@ -1,7 +1,7 @@
 // client/src/pages/Login.tsx
 import { useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom'; // <-- Added Link here
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -69,6 +69,12 @@ export default function Login() {
             Log In
           </button>
         </form>
+
+        {/* --- NEW SIGN UP LINK --- */}
+        <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '14px', color: '#a0a0b0' }}>
+          Don't have an account? <Link to="/register" style={{ color: '#b185ff', textDecoration: 'none' }}>Sign Up</Link>
+        </p>
+        
       </div>
     </div>
   );
