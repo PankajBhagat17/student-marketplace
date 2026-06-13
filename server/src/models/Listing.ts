@@ -8,40 +8,23 @@ class Listing extends Model {
   public price!: number;
   public category!: string;
   public seller_email!: string;
-  public seller_phone?: string; // <-- NEW: Added phone number
+  public seller_phone?: string; 
   public imageUrl!: string; 
+  public status!: string; // <-- NEW
 }
 
 Listing.init({
-  id: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
-    primaryKey: true,
-  },
-  title: {
+  id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
+  title: { type: DataTypes.STRING, allowNull: false },
+  price: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
+  category: { type: DataTypes.STRING, allowNull: false },
+  seller_email: { type: DataTypes.STRING, allowNull: false },
+  seller_phone: { type: DataTypes.STRING, allowNull: true },
+  imageUrl: { type: DataTypes.STRING, allowNull: true },
+  // --- NEW STATUS FIELD ---
+  status: {
     type: DataTypes.STRING,
-    allowNull: false,
-  },
-  price: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
-  },
-  category: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  seller_email: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  // --- NEW PHONE FIELD ---
-  seller_phone: {
-    type: DataTypes.STRING,
-    allowNull: true, // Set to true so old listings without numbers don't crash
-  },
-  imageUrl: {
-    type: DataTypes.STRING,
-    allowNull: true, 
+    defaultValue: 'available',
   }
 }, {
   sequelize,

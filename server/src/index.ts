@@ -53,13 +53,31 @@ app.get('/api/listings', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
+// --- NEW ROUTE: Fetch ONLY the logged-in user's listings for their Profile ---
+app.get('/api/profile/listings', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userEmail = req.user?.email;
+    
+    // This translates directly to: SELECT * FROM listings WHERE seller_email = 'user@email.com'
+    const myListings = await Listing.findAll({
+      where: { seller_email: userEmail },
+      order: [['createdAt', 'DESC']]
+    });
+    
+    res.json(myListings);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error fetching profile listings' });
+  }
+});
+// -----------------------------------------------------------------------------
+
 // POST: Create a new listing
 app.post('/api/listings', authenticateToken, upload.single('image'), async (req: AuthRequest, res) => {
   try {
     const { title, price, category } = req.body;
     const seller_email = req.user?.email || 'unknown@university.edu';
     
-    // --- NEW: Look up the user in the database to get their phone number ---
+    // --- Look up the user in the database to get their phone number ---
     const currentUser: any = await User.findOne({ where: { email: seller_email } });
     const seller_phone = currentUser?.phone_number || null;
     // -----------------------------------------------------------------------
@@ -72,7 +90,7 @@ app.post('/api/listings', authenticateToken, upload.single('image'), async (req:
       price,
       category,
       seller_email,
-      seller_phone, // <-- NEW: Added to the database creation!
+      seller_phone, 
       imageUrl
     });
 
@@ -118,6 +136,65 @@ app.delete('/api/listings/:id', authenticateToken, async (req: AuthRequest, res)
     res.status(500).json({ error: 'Server error deleting listing' });
   }
 });
+
+// --- PUT ROUTE: Mark a listing as SOLD ---
+app.put('/api/listings/:id/status', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const listingId = req.params.id;
+    const userEmail = req.user?.email;
+
+    // 1. Find the listing
+    const listing: any = await Listing.findByPk(listingId);
+    if (!listing) return res.status(404).json({ error: 'Listing not found' });
+
+    // 2. Security Check: Only the owner can mark it sold
+    if (listing.seller_email !== userEmail) {
+      return res.status(403).json({ error: 'You can only update your own listings' });
+    }
+
+    // 3. Update and save
+    listing.status = 'sold';
+    await listing.save();
+    
+    res.json(listing);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error updating status' });
+  }
+});
+// ----------------------------------------------
+
+// --- NEW PUT ROUTE: Update a listing's price ---
+app.put('/api/listings/:id/price', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const listingId = req.params.id;
+    const userEmail = req.user?.email;
+    const { newPrice } = req.body; 
+
+    if (!newPrice || isNaN(newPrice)) {
+      return res.status(400).json({ error: 'A valid price is required' });
+    }
+
+    // 1. Find the listing
+    const listing: any = await Listing.findByPk(listingId);
+    if (!listing) return res.status(404).json({ error: 'Listing not found' });
+
+    // 2. Security Check: Only the owner can change the price
+    if (listing.seller_email !== userEmail) {
+      return res.status(403).json({ error: 'You can only edit your own listings' });
+    }
+
+    // 3. Update the price and save
+    listing.price = newPrice;
+    await listing.save();
+    
+    res.json(listing);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error updating price' });
+  }
+});
+// ----------------------------------------------
 
 // Test the database connection AND sync the models
 sequelize.authenticate()
