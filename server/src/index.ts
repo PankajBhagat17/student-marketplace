@@ -13,7 +13,6 @@ import authRoutes from './routes/auth';
 import { authenticateToken, AuthRequest } from './middleware/authMiddleware';
 
 const app = express();
-const PORT = 5001;
 
 app.use(cors());
 app.use(express.json());
@@ -77,7 +76,7 @@ app.post('/api/listings', authenticateToken, upload.single('image'), async (req:
   }
 });
 
-// --- NEW: DELETE ROUTE ---
+// DELETE: Remove a listing securely
 app.delete('/api/listings/:id', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const listingId = req.params.id;
@@ -90,7 +89,7 @@ app.delete('/api/listings/:id', authenticateToken, async (req: AuthRequest, res)
       return res.status(404).json({ error: 'Listing not found' });
     }
 
-    // // 2. Security Check: Does the logged-in user own this listing?
+    // 2. Security Check: Does the logged-in user own this listing?
     if (listing.seller_email !== userEmail) {
       return res.status(403).json({ error: 'Security alert: You can only delete your own listings' });
     }
@@ -112,7 +111,6 @@ app.delete('/api/listings/:id', authenticateToken, async (req: AuthRequest, res)
     res.status(500).json({ error: 'Server error deleting listing' });
   }
 });
-// -------------------------
 
 // Test the database connection AND sync the models
 sequelize.authenticate()
@@ -121,8 +119,11 @@ sequelize.authenticate()
     await sequelize.sync({ alter: true }); 
     console.log('📦 Database tables synced!');
 
+    // Use Render's dynamically assigned port, or fall back to 5001 for local development
+    const PORT = process.env.PORT || 5001;
+
     app.listen(PORT, () => {
-      console.log(`🚀 Server is running on http://localhost:${PORT}`);
+      console.log(`Server running on port ${PORT}`);
     });
   })
   .catch((error) => {
