@@ -5,7 +5,7 @@ import cors from 'cors';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import sharp from 'sharp'; // <-- NEW: Import Image Compressor
+import sharp from 'sharp'; 
 import sequelize from './database';
 import { Op } from 'sequelize'; 
 import User from './models/User';
@@ -20,18 +20,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --- UPGRADED IMAGE UPLOAD SETUP ---
 const uploadDir = path.join(__dirname, '../uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
 }
 
-// NEW: Store files in RAM temporarily so Sharp can compress them first
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 app.use('/uploads', express.static(uploadDir));
-// ---------------------------
 
 app.use('/api/auth', authRoutes);
 
@@ -39,7 +36,9 @@ app.get('/api/dashboard-data', authenticateToken, (req: AuthRequest, res) => {
   res.json({ message: 'VIP Area', userThatRequestedThis: req.user });
 });
 
-app.get('/api/listings', authenticateToken, async (req: AuthRequest, res) => {
+// --- UPDATED: UNLOCKED ROUTE FOR GUESTS ---
+// Notice how 'authenticateToken' is removed here! Anyone can view items now.
+app.get('/api/listings', async (req, res) => {
   try {
     const { search, category, minPrice, maxPrice, sortBy } = req.query;
     let whereClause: any = {};
@@ -63,6 +62,7 @@ app.get('/api/listings', authenticateToken, async (req: AuthRequest, res) => {
     res.status(500).json({ error: 'Server error fetching listings' });
   }
 });
+// ------------------------------------------
 
 app.get('/api/profile/listings', authenticateToken, async (req: AuthRequest, res) => {
   try {
@@ -76,7 +76,6 @@ app.get('/api/profile/listings', authenticateToken, async (req: AuthRequest, res
   }
 });
 
-// --- UPGRADED POST ROUTE (With Sharp Compression) ---
 app.post('/api/listings', authenticateToken, upload.single('image'), async (req: AuthRequest, res) => {
   try {
     const { title, price, category } = req.body;
@@ -87,12 +86,10 @@ app.post('/api/listings', authenticateToken, upload.single('image'), async (req:
 
     let imageUrl = null;
 
-    // NEW: Compression Logic
     if (req.file) {
       const filename = Date.now() + '-' + Math.round(Math.random() * 1E9) + '.webp';
       const outputPath = path.join(uploadDir, filename);
 
-      // Take the massive image, resize it to a max of 800px wide, and compress to WebP
       await sharp(req.file.buffer)
         .resize({ width: 800, withoutEnlargement: true })
         .webp({ quality: 80 })
@@ -111,7 +108,6 @@ app.post('/api/listings', authenticateToken, upload.single('image'), async (req:
     res.status(500).json({ error: 'Server error creating listing' });
   }
 });
-// ----------------------------------------------------
 
 app.delete('/api/listings/:id', authenticateToken, async (req: AuthRequest, res) => {
   try {

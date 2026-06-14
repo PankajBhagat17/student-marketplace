@@ -7,14 +7,12 @@ import toast, { Toaster } from 'react-hot-toast';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<any>(null); // Null means they are a Guest!
   const [listings, setListings] = useState<any[]>([]);
   const [favorites, setFavorites] = useState<number[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
-  
-  // --- NEW: Image Lightbox State ---
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,30 +31,48 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchDashboardData = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) { navigate('/login'); return; }
       try {
-        const userRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/dashboard-data', { headers: { Authorization: `Bearer ${token}` } });
-        setUser(userRes.data.userThatRequestedThis);
-        
-        const listingsRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/listings', { headers: { Authorization: `Bearer ${token}` } });
+        // 1. EVERYONE gets to see the listings (Public Route now!)
+        const listingsRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/listings');
         setListings(listingsRes.data);
 
-        const favRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/favorites', { headers: { Authorization: `Bearer ${token}` } });
-        setFavorites(favRes.data.favoriteIds || []);
+        // 2. ONLY fetch user-specific data if they have a token
+        const token = localStorage.getItem('token');
+        if (token) {
+          const userRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/dashboard-data', { headers: { Authorization: `Bearer ${token}` } });
+          setUser(userRes.data.userThatRequestedThis);
+          
+          const favRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/favorites', { headers: { Authorization: `Bearer ${token}` } });
+          setFavorites(favRes.data.favoriteIds || []);
+        } else {
+          setUser(null); // Explicitly set as guest
+        }
       } catch (err: any) {
+        console.error("Auth check failed:", err);
+        // If their token is expired/broken, just silently clear it and let them browse as a guest
         localStorage.removeItem('token');
-        navigate('/login');
+        setUser(null);
       } finally {
         setIsLoading(false); 
       }
     };
     fetchDashboardData();
-  }, [navigate]);
+  }, []);
+
+  // --- NEW: THE BOUNCER ---
+  // This checks if the user is logged in. If not, it shows a toast and redirects them.
+  const checkAuth = () => {
+    if (!user) {
+      toast('Please log in or sign up to do this!', { icon: '🔒' });
+      navigate('/login');
+      return false; 
+    }
+    return true; 
+  };
+  // -------------------------
 
   const applyAdvancedFilters = async () => {
     setIsSearching(true); 
-    const token = localStorage.getItem('token');
     try {
       const query = new URLSearchParams();
       if (searchTerm) query.append('search', searchTerm);
@@ -65,9 +81,7 @@ export default function Dashboard() {
       if (maxPrice) query.append('maxPrice', maxPrice);
       if (sortBy) query.append('sortBy', sortBy);
 
-      const res = await axios.get(`https://student-marketplace-ho49.onrender.com/api/listings?${query.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await axios.get(`https://student-marketplace-ho49.onrender.com/api/listings?${query.toString()}`);
       
       setListings(res.data);
       toast.success('Filters applied!'); 
@@ -80,6 +94,8 @@ export default function Dashboard() {
 
   const handleCreateListing = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!checkAuth()) return; // <-- The Bouncer checks ID here!
+
     const token = localStorage.getItem('token');
     const toastId = toast.loading('Compressing & Posting...'); 
 
@@ -103,6 +119,7 @@ export default function Dashboard() {
   };
 
   const handleDelete = async (id: number) => {
+    if (!checkAuth()) return;
     if (!window.confirm("Are you sure you want to delete this listing?")) return;
     const token = localStorage.getItem('token');
     try {
@@ -115,6 +132,7 @@ export default function Dashboard() {
   };
 
   const handleMarkSold = async (id: number) => {
+    if (!checkAuth()) return;
     const token = localStorage.getItem('token');
     try {
       const response = await axios.put(`https://student-marketplace-ho49.onrender.com/api/listings/${id}/status`, {}, { headers: { Authorization: `Bearer ${token}` } });
@@ -126,6 +144,8 @@ export default function Dashboard() {
   };
 
   const handleToggleFavorite = async (listingId: number) => {
+    if (!checkAuth()) return; // <-- Guests can't favorite items!
+    
     const token = localStorage.getItem('token');
     const isFavorited = favorites.includes(listingId);
     try {
@@ -145,16 +165,19 @@ export default function Dashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
-    navigate('/login');
+    setUser(null); 
+    setFavorites([]);
     toast.success('Logged out safely.');
   };
 
   const handleWhatsAppContact = (sellerPhone: string, itemTitle: string) => {
+    if (!checkAuth()) return; // <-- Hide contact info behind login
     const message = encodeURIComponent(`Hi! I saw your listing for "${itemTitle}" on the PCCOE Student Marketplace. Is it still available?`);
     window.open(`https://wa.me/${sellerPhone}?text=${message}`, '_blank');
   };
 
   const handleEmailContact = (sellerEmail: string, itemTitle: string) => {
+    if (!checkAuth()) return; // <-- Hide contact info behind login
     const subject = encodeURIComponent(`Interested in buying: ${itemTitle}`);
     const body = encodeURIComponent(`Hi!\n\nI saw your listing for "${itemTitle}" on the Student Marketplace and I am interested in buying it. Let me know when and where we can meet up!`);
     window.location.href = `mailto:${sellerEmail}?subject=${subject}&body=${body}`;
@@ -182,34 +205,55 @@ export default function Dashboard() {
       <div className="dashboard-header">
         <h2>Student Marketplace | PCCOE</h2>
         <div className="user-info" style={{ display: 'flex', alignItems: 'center' }}>
-          {user && <span style={{ marginRight: '15px' }}>Logged in: <strong>{user.college_domain}</strong></span>}
-          <Link to="/profile" style={{ color: 'white', textDecoration: 'none', marginRight: '15px', fontWeight: 'bold', background: '#2b2b36', padding: '8px 12px', borderRadius: '4px' }}>
-            👤 My Profile
-          </Link>
-          <button onClick={handleLogout} className="btn-danger">Log Out</button>
+          
+          {/* DYNAMIC HEADER: Shows Profile/Logout if User, or Login/Signup if Guest */}
+          {user ? (
+            <>
+              <span style={{ marginRight: '15px' }}>Logged in: <strong>{user.college_domain}</strong></span>
+              <Link to="/profile" style={{ color: 'white', textDecoration: 'none', marginRight: '15px', fontWeight: 'bold', background: '#2b2b36', padding: '8px 12px', borderRadius: '4px' }}>
+                👤 My Profile
+              </Link>
+              <button onClick={handleLogout} className="btn-danger">Log Out</button>
+            </>
+          ) : (
+            <button onClick={() => navigate('/login')} className="btn-primary" style={{ padding: '8px 20px' }}>
+              Log In / Sign Up
+            </button>
+          )}
+
         </div>
       </div>
 
       <div className="dashboard-body">
-        <div className="create-listing-panel">
-          <h3>Post an Item</h3>
-          <form onSubmit={handleCreateListing}>
-            <input type="text" className="form-input" placeholder="Item Title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} required />
-            <input type="number" className="form-input" placeholder="Price (₹)" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} required />
-            <select className="form-input" value={newPostCategory} onChange={(e) => setNewPostCategory(e.target.value)}>
-              <option value="Textbooks">Textbooks</option>
-              <option value="Electronics">Electronics</option>
-              <option value="Dorm Essentials">Dorm Essentials</option>
-            </select>
-            <input type="file" id="image-upload" accept="image/*" className="form-input" onChange={(e) => setImageFile(e.target.files ? e.target.files[0] : null)} style={{ padding: '8px', cursor: 'pointer' }} />
-            {imageFile && (
-              <div style={{ marginTop: '10px', textAlign: 'center', marginBottom: '15px' }}>
-                <img src={URL.createObjectURL(imageFile)} alt="Preview" style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px', border: '2px dashed var(--primary)' }} />
-              </div>
-            )}
-            <button type="submit" className="btn-primary">Create Listing</button>
-          </form>
-        </div>
+        
+        {/* Only show the "Post an Item" form if the user is logged in! */}
+        {user ? (
+          <div className="create-listing-panel">
+            <h3>Post an Item</h3>
+            <form onSubmit={handleCreateListing}>
+              <input type="text" className="form-input" placeholder="Item Title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} required />
+              <input type="number" className="form-input" placeholder="Price (₹)" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} required />
+              <select className="form-input" value={newPostCategory} onChange={(e) => setNewPostCategory(e.target.value)}>
+                <option value="Textbooks">Textbooks</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Dorm Essentials">Dorm Essentials</option>
+              </select>
+              <input type="file" id="image-upload" accept="image/*" className="form-input" onChange={(e) => setImageFile(e.target.files ? e.target.files[0] : null)} style={{ padding: '8px', cursor: 'pointer' }} />
+              {imageFile && (
+                <div style={{ marginTop: '10px', textAlign: 'center', marginBottom: '15px' }}>
+                  <img src={URL.createObjectURL(imageFile)} alt="Preview" style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px', border: '2px dashed var(--primary)' }} />
+                </div>
+              )}
+              <button type="submit" className="btn-primary">Create Listing</button>
+            </form>
+          </div>
+        ) : (
+          <div className="create-listing-panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', padding: '40px 20px' }}>
+            <h3 style={{ marginBottom: '15px' }}>Have something to sell?</h3>
+            <p style={{ color: 'var(--text)', marginBottom: '20px' }}>Join the PCCOE marketplace to post your items instantly.</p>
+            <button onClick={() => navigate('/login')} className="btn-primary">Create an Account</button>
+          </div>
+        )}
 
         <div className="listings-panel">
           <div style={{ background: '#2b2b36', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
@@ -247,8 +291,14 @@ export default function Dashboard() {
 
           <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
             <button onClick={() => setViewMode('All')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'All' ? '#b185ff' : '#2b2b36', color: 'white' }}>All Results</button>
-            <button onClick={() => setViewMode('Mine')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'Mine' ? '#b185ff' : '#2b2b36', color: 'white' }}>My Items</button>
-            <button onClick={() => setViewMode('Wishlist')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'Wishlist' ? '#ff6b6b' : '#2b2b36', color: 'white' }}>❤️ Wishlist</button>
+            
+            {/* Only show Mine & Wishlist tabs if user is logged in! */}
+            {user && (
+              <>
+                <button onClick={() => setViewMode('Mine')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'Mine' ? '#b185ff' : '#2b2b36', color: 'white' }}>My Items</button>
+                <button onClick={() => setViewMode('Wishlist')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'Wishlist' ? '#ff6b6b' : '#2b2b36', color: 'white' }}>❤️ Wishlist</button>
+              </>
+            )}
           </div>
 
           <div className="listings-grid">
@@ -262,14 +312,15 @@ export default function Dashboard() {
                 const isFavorited = favorites.includes(item.id);
                 return (
                 <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: index * 0.1 }} className="item-card" style={{ opacity: item.status === 'sold' ? 0.6 : 1, position: 'relative' }}>
+                  
                   <button onClick={() => handleToggleFavorite(item.id)} style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', padding: '8px', cursor: 'pointer', zIndex: 10, fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {isFavorited ? '❤️' : '🤍'}
                   </button>
+                  
                   {item.status === 'sold' && (
                     <div style={{ position: 'absolute', top: '10px', right: '10px', background: '#ff6b6b', color: 'white', padding: '5px 10px', borderRadius: '4px', fontWeight: 'bold', zIndex: 10 }}>SOLD</div>
                   )}
 
-                  {/* UPGRADED IMAGE: Clickable with zoom-in cursor */}
                   {item.imageUrl ? (
                     <img 
                       src={`https://student-marketplace-ho49.onrender.com${item.imageUrl}`} 
@@ -284,7 +335,11 @@ export default function Dashboard() {
                   <h4 style={{ margin: '10px 0', color: 'var(--text-h)', textDecoration: item.status === 'sold' ? 'line-through' : 'none' }}>{item.title}</h4>
                   <p className="item-price">₹{item.price}</p>
                   <span className="item-badge">{item.category}</span>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text)', marginTop: '10px' }}>Seller: {item.seller_email}</p>
+                  
+                  {/* Hide Seller Email from Guests to prevent scraping */}
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text)', marginTop: '10px' }}>
+                    Seller: {user ? item.seller_email : 'Log in to view'}
+                  </p>
 
                   {user && user.email === item.seller_email && (
                     <div style={{ display: 'flex', gap: '8px', marginTop: '15px' }}>
@@ -293,9 +348,14 @@ export default function Dashboard() {
                     </div>
                   )}
 
-                  {user && user.email !== item.seller_email && item.status !== 'sold' && (
+                  {(!user || (user && user.email !== item.seller_email)) && item.status !== 'sold' && (
                     <div style={{ marginTop: '15px', borderTop: '1px solid #333', paddingTop: '10px' }}>
-                      <p style={{ fontSize: '0.8rem', color: '#a0a0b0', marginBottom: '10px', textAlign: 'center' }}>📞 <strong>{item.seller_phone || '919876543210'}</strong></p>
+                      
+                      {/* Hide Phone Number from Guests */}
+                      <p style={{ fontSize: '0.8rem', color: '#a0a0b0', marginBottom: '10px', textAlign: 'center' }}>
+                        📞 <strong>{user ? (item.seller_phone || '919876543210') : '🔒 Hidden'}</strong>
+                      </p>
+                      
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button onClick={() => handleWhatsAppContact(item.seller_phone || '919876543210', item.title)} style={{ flex: 1, padding: '8px', background: '#25D366', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>💬 WhatsApp</button>
                         <button onClick={() => handleEmailContact(item.seller_email, item.title)} style={{ flex: 1, padding: '8px', background: '#b185ff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>✉️ Email</button>
@@ -310,7 +370,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* --- NEW: The Full-Screen Lightbox Modal --- */}
       <AnimatePresence>
         {selectedImage && (
           <motion.div 
@@ -326,7 +385,7 @@ export default function Dashboard() {
               exit={{ scale: 0.8 }} 
               src={`https://student-marketplace-ho49.onrender.com${selectedImage}`} 
               alt="Full screen preview" 
-              onClick={(e) => e.stopPropagation()} // Prevent click from closing immediately if they click the image itself
+              onClick={(e) => e.stopPropagation()} 
               style={{ maxWidth: '90%', maxHeight: '90%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0px 0px 30px rgba(0,0,0,0.5)', cursor: 'default' }}
             />
             <button 
@@ -338,7 +397,6 @@ export default function Dashboard() {
           </motion.div>
         )}
       </AnimatePresence>
-      {/* ------------------------------------------- */}
 
     </motion.div>
   );
