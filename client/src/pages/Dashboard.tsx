@@ -301,7 +301,7 @@ export default function Dashboard() {
  
                    {item.imageUrl ? (
                      <img 
-                       src={`https://student-marketplace-ho49.onrender.com${item.imageUrl}`} 
+                       src={item.imageUrl.startsWith('http') ? item.imageUrl : `https://student-marketplace-ho49.onrender.com${item.imageUrl}`} 
                        alt={item.title} 
                        onClick={() => setSelectedImage(item.imageUrl)}
                        style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', marginBottom: '15px', cursor: 'zoom-in' }} 
@@ -436,7 +436,7 @@ export default function Dashboard() {
             style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'zoom-out' }}
           >
             <motion.img 
-              initial={{ scale: 0.8 }} animate={{ scale: 1 }} exit={{ scale: 0.8 }} src={`https://student-marketplace-ho49.onrender.com${selectedImage}`} alt="Full screen preview" onClick={(e) => e.stopPropagation()} 
+              initial={{ scale: 0.8 }} animate={{ scale: 1 }} exit={{ scale: 0.8 }} src={selectedImage.startsWith('http') ? selectedImage : `https://student-marketplace-ho49.onrender.com${selectedImage}`} alt="Full screen preview" onClick={(e) => e.stopPropagation()} 
               style={{ maxWidth: '90%', maxHeight: '90%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0px 0px 30px rgba(0,0,0,0.5)', cursor: 'default' }}
             />
             <button onClick={() => setSelectedImage(null)} style={{ position: 'absolute', top: '20px', right: '30px', background: 'transparent', border: 'none', color: 'white', fontSize: '2.5rem', cursor: 'pointer' }}>×</button>

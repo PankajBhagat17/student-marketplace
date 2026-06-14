@@ -3,9 +3,10 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
+import { v2 as cloudinary } from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import path from 'path';
 import fs from 'fs';
-import sharp from 'sharp'; 
 import sequelize from './database';
 import { Op } from 'sequelize'; 
 import User from './models/User';
@@ -21,25 +22,32 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const uploadDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
-}
+// --- CLOUDINARY CONFIGURATION ---
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
-const storage = multer.memoryStorage();
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'pccoe-marketplace', 
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'heic'],
+    transformation: [{ width: 800, height: 800, crop: 'limit', quality: 'auto' }] 
+  } as any
+});
+
 const upload = multer({ storage: storage });
-
-app.use('/uploads', express.static(uploadDir));
+// --------------------------------
 
 app.use('/api/auth', authRoutes);
-
 app.use('/api/admin', adminRoutes);
 
 app.get('/api/dashboard-data', authenticateToken, (req: AuthRequest, res) => {
   res.json({ message: 'VIP Area', userThatRequestedThis: req.user });
 });
 
-// --- UPDATED: UNLOCKED ROUTE FOR GUESTS ---
 app.get('/api/listings', async (req, res) => {
   try {
     const { search, category, minPrice, maxPrice, sortBy } = req.query;
@@ -64,7 +72,6 @@ app.get('/api/listings', async (req, res) => {
     res.status(500).json({ error: 'Server error fetching listings' });
   }
 });
-// ------------------------------------------
 
 app.get('/api/profile/listings', authenticateToken, async (req: AuthRequest, res) => {
   try {
@@ -78,6 +85,7 @@ app.get('/api/profile/listings', authenticateToken, async (req: AuthRequest, res
   }
 });
 
+// --- UPDATED POST ROUTE FOR CLOUDINARY ---
 app.post('/api/listings', authenticateToken, upload.single('image'), async (req: AuthRequest, res) => {
   try {
     const { title, price, category } = req.body;
@@ -86,19 +94,8 @@ app.post('/api/listings', authenticateToken, upload.single('image'), async (req:
     const currentUser: any = await User.findOne({ where: { email: seller_email } });
     const seller_phone = currentUser?.phone_number || null;
 
-    let imageUrl = null;
-
-    if (req.file) {
-      const filename = Date.now() + '-' + Math.round(Math.random() * 1E9) + '.webp';
-      const outputPath = path.join(uploadDir, filename);
-
-      await sharp(req.file.buffer)
-        .resize({ width: 800, withoutEnlargement: true })
-        .webp({ quality: 80 })
-        .toFile(outputPath);
-
-      imageUrl = `/uploads/${filename}`;
-    }
+    // Cloudinary automatically provides the secure, permanent URL in req.file.path
+    const imageUrl = req.file ? req.file.path : null;
 
     const newListing = await Listing.create({
       title, price, category, seller_email, seller_phone, imageUrl
@@ -110,6 +107,7 @@ app.post('/api/listings', authenticateToken, upload.single('image'), async (req:
     res.status(500).json({ error: 'Server error creating listing' });
   }
 });
+// ------------------------------------------
 
 app.delete('/api/listings/:id', authenticateToken, async (req: AuthRequest, res) => {
   try {
@@ -117,7 +115,8 @@ app.delete('/api/listings/:id', authenticateToken, async (req: AuthRequest, res)
     if (!listing) return res.status(404).json({ error: 'Listing not found' });
     if (listing.seller_email !== req.user?.email) return res.status(403).json({ error: 'Security alert' });
 
-    if (listing.imageUrl) {
+    // Ensure we don't try to locally delete a Cloudinary 'http' URL
+    if (listing.imageUrl && !listing.imageUrl.startsWith('http')) {
       const imagePath = path.join(__dirname, '..', listing.imageUrl);
       if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
     }
@@ -200,7 +199,6 @@ sequelize.authenticate()
     await sequelize.sync({ alter: true }); 
     console.log('📦 Database tables synced!');
 
-    // --- NEW: AUTOMATIC DATABASE SEEDING ---
     const count = await Listing.count();
     if (count === 0) {
       console.log('🌱 Database is empty. Seeding realistic sample items...');
@@ -220,7 +218,6 @@ sequelize.authenticate()
       
       console.log('✅ Seed data injected successfully!');
     }
-    // ---------------------------------------
 
     const PORT = process.env.PORT || 5001;
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
