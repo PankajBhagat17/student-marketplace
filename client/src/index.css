@@ -374,12 +374,12 @@ code {
   font-weight: 500;
   border: 1px solid var(--accent-border);
 }
+
 /* ========================================= */
 /* --- 📱 MOBILE RESPONSIVE DESIGN RULES --- */
 /* ========================================= */
 
 @media (max-width: 768px) {
-  /* 1. Stack the main layout (Post Form on top, Items below) */
   .dashboard-body {
     display: flex;
     flex-direction: column !important;
@@ -387,14 +387,22 @@ code {
     padding: 10px;
   }
 
-  /* 2. Force the item grid into a single column for mobile */
+  /* Forces the Listings to jump to the top on mobile */
+  .listings-panel {
+    order: 1;
+  }
+  
+  /* Forces the Post form to jump to the bottom on mobile */
+  .create-listing-panel {
+    order: 2;
+  }
+
   .listings-grid {
     display: grid;
-    grid-template-columns: 1fr !important; /* 1 column taking up full width */
+    grid-template-columns: 1fr !important;
     gap: 15px;
   }
 
-  /* 3. Center the header and stack the user info/buttons */
   .dashboard-header {
     flex-direction: column;
     text-align: center;
@@ -411,26 +419,26 @@ code {
   .user-info span, 
   .user-info a, 
   .user-info button {
-    margin: 0 !important; /* Overrides the inline margins from your React code */
+    margin: 0 !important;
     width: 100%;
     text-align: center;
   }
 
-  /* 4. Fix the Advanced Search bar so inputs don't overflow */
   .listings-panel > div:first-child > div {
     flex-direction: column;
     width: 100%;
   }
 
-  .listings-panel input,
-  .listings-panel select,
-  .listings-panel button {
-    width: 100% !important; /* Make inputs stretch to phone width */
+  /* THE FIX: Only stretch the Search Bar inputs and buttons, NOT the tabs! */
+  .listings-panel > div:first-child input,
+  .listings-panel > div:first-child select,
+  .listings-panel > div:first-child button {
+    width: 100% !important;
   }
 
-  /* 5. Adjust the View Mode toggle buttons (All | Mine | Wishlist) */
+  /* Keep the toggle tabs centered and neatly wrapped on mobile */
   .listings-panel > div:nth-child(2) {
-    flex-wrap: wrap; /* Allows buttons to wrap to the next line if screen is too narrow */
+    flex-wrap: wrap;
     justify-content: center;
   }
 }

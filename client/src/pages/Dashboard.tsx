@@ -7,7 +7,7 @@ import toast, { Toaster } from 'react-hot-toast';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null); // Null means they are a Guest!
+  const [user, setUser] = useState<any>(null); 
   const [listings, setListings] = useState<any[]>([]);
   const [favorites, setFavorites] = useState<number[]>([]);
 
@@ -46,7 +46,6 @@ export default function Dashboard() {
           setUser(null); 
         }
       } catch (err: any) {
-        console.error("Auth check failed:", err);
         localStorage.removeItem('token');
         setUser(null);
       } finally {
@@ -217,7 +216,36 @@ export default function Dashboard() {
 
       <div className="dashboard-body">
         
-        {/* 1. LISTINGS AND SEARCH GO FIRST (Amazon Style) */}
+        {/* 1. POST AN ITEM ALWAYS FIRST IN HTML (Left side on Desktop) */}
+        {user ? (
+          <div className="create-listing-panel">
+            <h3>Post an Item</h3>
+            <form onSubmit={handleCreateListing}>
+              <input type="text" className="form-input" placeholder="Item Title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} required />
+              <input type="number" className="form-input" placeholder="Price (₹)" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} required />
+              <select className="form-input" value={newPostCategory} onChange={(e) => setNewPostCategory(e.target.value)}>
+                <option value="Textbooks">Textbooks</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Dorm Essentials">Dorm Essentials</option>
+              </select>
+              <input type="file" id="image-upload" accept="image/*" className="form-input" onChange={(e) => setImageFile(e.target.files ? e.target.files[0] : null)} style={{ padding: '8px', cursor: 'pointer' }} />
+              {imageFile && (
+                <div style={{ marginTop: '10px', textAlign: 'center', marginBottom: '15px' }}>
+                  <img src={URL.createObjectURL(imageFile)} alt="Preview" style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px', border: '2px dashed var(--primary)' }} />
+                </div>
+              )}
+              <button type="submit" className="btn-primary">Create Listing</button>
+            </form>
+          </div>
+        ) : (
+          <div className="create-listing-panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', padding: '40px 20px' }}>
+            <h3 style={{ marginBottom: '15px' }}>Have something to sell?</h3>
+            <p style={{ color: 'var(--text)', marginBottom: '20px' }}>Join the PCCOE marketplace to post your items instantly.</p>
+            <button onClick={() => navigate('/login')} className="btn-primary">Create an Account</button>
+          </div>
+        )}
+
+        {/* 2. LISTINGS GRID SECOND IN HTML (Right side on Desktop) */}
         <div className="listings-panel">
           <div style={{ background: '#2b2b36', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -327,35 +355,6 @@ export default function Dashboard() {
             )}
           </div>
         </div>
-
-        {/* 2. POST ITEM / SELL PROMPT GOES AT THE BOTTOM NOW */}
-        {user ? (
-          <div className="create-listing-panel">
-            <h3>Post an Item</h3>
-            <form onSubmit={handleCreateListing}>
-              <input type="text" className="form-input" placeholder="Item Title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} required />
-              <input type="number" className="form-input" placeholder="Price (₹)" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} required />
-              <select className="form-input" value={newPostCategory} onChange={(e) => setNewPostCategory(e.target.value)}>
-                <option value="Textbooks">Textbooks</option>
-                <option value="Electronics">Electronics</option>
-                <option value="Dorm Essentials">Dorm Essentials</option>
-              </select>
-              <input type="file" id="image-upload" accept="image/*" className="form-input" onChange={(e) => setImageFile(e.target.files ? e.target.files[0] : null)} style={{ padding: '8px', cursor: 'pointer' }} />
-              {imageFile && (
-                <div style={{ marginTop: '10px', textAlign: 'center', marginBottom: '15px' }}>
-                  <img src={URL.createObjectURL(imageFile)} alt="Preview" style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px', border: '2px dashed var(--primary)' }} />
-                </div>
-              )}
-              <button type="submit" className="btn-primary">Create Listing</button>
-            </form>
-          </div>
-        ) : (
-          <div className="create-listing-panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', padding: '40px 20px' }}>
-            <h3 style={{ marginBottom: '15px' }}>Have something to sell?</h3>
-            <p style={{ color: 'var(--text)', marginBottom: '20px' }}>Join the PCCOE marketplace to post your items instantly.</p>
-            <button onClick={() => navigate('/login')} className="btn-primary">Create an Account</button>
-          </div>
-        )}
 
       </div>
 
