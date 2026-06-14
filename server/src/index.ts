@@ -102,8 +102,9 @@ app.post('/api/listings', authenticateToken, upload.single('image'), async (req:
     });
 
     res.status(201).json(newListing);
-  } catch (err) {
-    console.error(err);
+} catch (err: any) {
+    console.error("🔥 ACTUAL UPLOAD ERROR:", err.message || err);
+    console.error("FULL DETAILS:", JSON.stringify(err, null, 2));
     res.status(500).json({ error: 'Server error creating listing' });
   }
 });
