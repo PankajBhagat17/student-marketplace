@@ -37,7 +37,6 @@ app.get('/api/dashboard-data', authenticateToken, (req: AuthRequest, res) => {
 });
 
 // --- UPDATED: UNLOCKED ROUTE FOR GUESTS ---
-// Notice how 'authenticateToken' is removed here! Anyone can view items now.
 app.get('/api/listings', async (req, res) => {
   try {
     const { search, category, minPrice, maxPrice, sortBy } = req.query;
@@ -192,8 +191,6 @@ app.get('/api/favorites', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
-// Replace the bottom of server/src/index.ts with this:
-
 sequelize.authenticate()
   .then(async () => {
     console.log('✅ Database connection has been established successfully.');
@@ -201,7 +198,6 @@ sequelize.authenticate()
     console.log('📦 Database tables synced!');
 
     // --- NEW: AUTOMATIC DATABASE SEEDING ---
-    // Count how many items exist. If 0, inject our sample data!
     const count = await Listing.count();
     if (count === 0) {
       console.log('🌱 Database is empty. Seeding realistic sample items...');
@@ -209,14 +205,14 @@ sequelize.authenticate()
       await Listing.bulkCreate([
         { title: "Casio fx-991EX Scientific Calculator", price: 800, category: "Electronics", seller_email: "alumni@pccoe.edu", seller_phone: "919876543210", status: "available" },
         { title: "Data Structures & Algorithms by Karumanchi", price: 450, category: "Textbooks", seller_email: "senior@pccoe.edu", seller_phone: "919876543210", status: "available" },
-        { title: "Adjustable Aluminum Laptop Stand", price: 600, category: "Electronics", seller_email: "alumni@pccoe.edu", seller_phone: "919876543210", status: "available" },
-        { title: "Engineering Drawing Set (Mini Drafter)", price: 350, category: "Textbooks", seller_email: "mech_student@pccoe.edu", seller_phone: "919876543210", status: "available" },
+        { title: "FOUND: Blue PCCOE ID Card near Canteen", price: 0, category: "Lost & Found", seller_email: "helpful_student@pccoe.edu", seller_phone: "919876543210", status: "available" },
+        { title: "Will tutor Java & OOP Concepts (Per Hour)", price: 200, category: "Skills & Services", seller_email: "coder@pccoe.edu", seller_phone: "919876543210", status: "available" },
         { title: "Pigeon Electric Kettle 1.5L", price: 400, category: "Dorm Essentials", seller_email: "hostel_guy@pccoe.edu", seller_phone: "919876543210", status: "available" },
-        { title: "Logitech B170 Wireless Mouse", price: 300, category: "Electronics", seller_email: "coder@pccoe.edu", seller_phone: "919876543210", status: "available" },
+        { title: "Logitech B170 Wireless Mouse", price: 300, category: "Electronics", seller_email: "alumni@pccoe.edu", seller_phone: "919876543210", status: "available" },
+        { title: "LOST: Black Fastrack Watch in Library", price: 0, category: "Lost & Found", seller_email: "stressed_student@pccoe.edu", seller_phone: "919876543210", status: "available" },
         { title: "Database System Concepts 7th Edition", price: 550, category: "Textbooks", seller_email: "cs_major@pccoe.edu", seller_phone: "919876543210", status: "available" },
         { title: "Foldable Study Table for Bed", price: 250, category: "Dorm Essentials", seller_email: "hostel_guy@pccoe.edu", seller_phone: "919876543210", status: "sold" },
-        { title: "Arduino Uno R3 Starter Kit", price: 900, category: "Electronics", seller_email: "robotics_club@pccoe.edu", seller_phone: "919876543210", status: "available" },
-        { title: "LED Desk Lamp with Phone Stand", price: 350, category: "Dorm Essentials", seller_email: "senior@pccoe.edu", seller_phone: "919876543210", status: "available" }
+        { title: "Resume Review & Tech Interview Prep", price: 0, category: "Skills & Services", seller_email: "senior@pccoe.edu", seller_phone: "919876543210", status: "available" }
       ]);
       
       console.log('✅ Seed data injected successfully!');

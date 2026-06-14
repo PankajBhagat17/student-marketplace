@@ -223,11 +223,16 @@ export default function Dashboard() {
             <form onSubmit={handleCreateListing}>
               <input type="text" className="form-input" placeholder="Item Title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} required />
               <input type="number" className="form-input" placeholder="Price (₹)" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} required />
+              
+              {/* --- NEW COMMUNITY CATEGORIES IN POST FORM --- */}
               <select className="form-input" value={newPostCategory} onChange={(e) => setNewPostCategory(e.target.value)}>
                 <option value="Textbooks">Textbooks</option>
                 <option value="Electronics">Electronics</option>
                 <option value="Dorm Essentials">Dorm Essentials</option>
+                <option value="Lost & Found">Lost & Found 🔍</option>
+                <option value="Skills & Services">Skills & Services 🤝</option>
               </select>
+
               <input type="file" id="image-upload" accept="image/*" className="form-input" onChange={(e) => setImageFile(e.target.files ? e.target.files[0] : null)} style={{ padding: '8px', cursor: 'pointer' }} />
               {imageFile && (
                 <div style={{ marginTop: '10px', textAlign: 'center', marginBottom: '15px' }}>
@@ -250,12 +255,17 @@ export default function Dashboard() {
           <div style={{ background: '#2b2b36', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               <input type="text" className="form-input" placeholder="Search items..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ margin: 0, flex: 1 }} />
+              
+              {/* --- NEW COMMUNITY CATEGORIES IN SEARCH BAR --- */}
               <select className="form-input" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={{ margin: 0, width: '150px' }}>
                 <option value="All">All Categories</option>
                 <option value="Textbooks">Textbooks</option>
                 <option value="Electronics">Electronics</option>
                 <option value="Dorm Essentials">Dorm Essentials</option>
+                <option value="Lost & Found">Lost & Found 🔍</option>
+                <option value="Skills & Services">Skills & Services 🤝</option>
               </select>
+
               <button onClick={applyAdvancedFilters} className="btn-primary" style={{ padding: '8px 20px', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }} disabled={isSearching}>
                 {isSearching ? '⏳ Searching...' : '🔍 Search'}
               </button>
@@ -324,8 +334,31 @@ export default function Dashboard() {
                    )}
  
                    <h4 style={{ margin: '10px 0', color: 'var(--text-h)', textDecoration: item.status === 'sold' ? 'line-through' : 'none' }}>{item.title}</h4>
-                   <p className="item-price">₹{item.price}</p>
-                   <span className="item-badge">{item.category}</span>
+                   
+                   {/* --- NEW DYNAMIC PRICE DISPLAY --- */}
+                   <p className="item-price">
+                     {item.category === 'Lost & Found' ? 'Reward / N/A' : 
+                      item.category === 'Skills & Services' && item.price == 0 ? 'Free / Negotiable' : 
+                      `₹${item.price}`}
+                   </p>
+
+                   {/* --- NEW DYNAMIC BADGE COLORS --- */}
+                   <span className="item-badge" style={{
+                     backgroundColor: 
+                       item.category === 'Lost & Found' ? 'rgba(239, 68, 68, 0.1)' : 
+                       item.category === 'Skills & Services' ? 'rgba(59, 130, 246, 0.1)' : 
+                       'var(--accent-bg)',
+                     color: 
+                       item.category === 'Lost & Found' ? '#ef4444' : 
+                       item.category === 'Skills & Services' ? '#3b82f6' : 
+                       'var(--accent)',
+                     borderColor: 
+                       item.category === 'Lost & Found' ? 'rgba(239, 68, 68, 0.5)' : 
+                       item.category === 'Skills & Services' ? 'rgba(59, 130, 246, 0.5)' : 
+                       'var(--accent-border)'
+                   }}>
+                     {item.category}
+                   </span>
                    
                    <p style={{ fontSize: '0.75rem', color: 'var(--text)', marginTop: '10px' }}>
                      Seller: {user ? item.seller_email : 'Log in to view'}
