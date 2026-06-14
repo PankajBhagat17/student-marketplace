@@ -9,6 +9,7 @@ import sequelize from './database';
 import User from './models/User';
 import Category from './models/Category';
 import Listing from './models/Listing'; 
+import Favorite from './models/Favorite'; // <-- NEW IMPORT
 import authRoutes from './routes/auth';
 import { authenticateToken, AuthRequest } from './middleware/authMiddleware';
 
@@ -164,7 +165,7 @@ app.put('/api/listings/:id/status', authenticateToken, async (req: AuthRequest, 
 });
 // ----------------------------------------------
 
-// --- NEW PUT ROUTE: Update a listing's price ---
+// --- PUT ROUTE: Update a listing's price ---
 app.put('/api/listings/:id/price', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const listingId = req.params.id;
@@ -195,6 +196,86 @@ app.put('/api/listings/:id/price', authenticateToken, async (req: AuthRequest, r
   }
 });
 // ----------------------------------------------
+
+// --- NEW WISHLIST / FAVORITES ROUTES ---
+
+// 1. POST: Add an item to the user's wishlist
+app.post('/api/favorites', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userEmail = req.user?.email;
+    const { listing_id } = req.body;
+
+    if (!userEmail) return res.status(401).json({ error: 'Unauthorized' });
+
+    // Check if it already exists to prevent duplicates
+    const existingFavorite = await Favorite.findOne({
+      where: { user_email: userEmail, listing_id }
+    });
+
+    if (existingFavorite) {
+      return res.status(400).json({ message: 'Item is already in your wishlist' });
+    }
+
+    const newFavorite = await Favorite.create({
+      user_email: userEmail,
+      listing_id
+    });
+
+    res.status(201).json(newFavorite);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error adding favorite' });
+  }
+});
+
+// 2. DELETE: Remove an item from the wishlist
+app.delete('/api/favorites/:listingId', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userEmail = req.user?.email;
+    const listingId = req.params.listingId;
+
+    if (!userEmail) return res.status(401).json({ error: 'Unauthorized' });
+
+    await Favorite.destroy({
+      where: { user_email: userEmail, listing_id: listingId }
+    });
+
+    res.json({ message: 'Item removed from wishlist' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error removing favorite' });
+  }
+});
+
+// 3. GET: Fetch all favorited items for the logged-in user
+app.get('/api/favorites', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userEmail = req.user?.email;
+    if (!userEmail) return res.status(401).json({ error: 'Unauthorized' });
+
+    // First, find all the listing IDs the user has saved
+    const userFavorites: any = await Favorite.findAll({
+      where: { user_email: userEmail }
+    });
+
+    const favoriteListingIds = userFavorites.map((fav: any) => fav.listing_id);
+
+    // Then, fetch the actual listing details for those IDs
+    const favoritedItems = await Listing.findAll({
+      where: { id: favoriteListingIds },
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      favoriteIds: favoriteListingIds, // Sends back just the IDs (useful for UI toggle states)
+      items: favoritedItems            // Sends back the full item data
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error fetching favorites' });
+  }
+});
+// ---------------------------------------
 
 // Test the database connection AND sync the models
 sequelize.authenticate()

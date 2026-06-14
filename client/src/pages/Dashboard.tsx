@@ -1,6 +1,6 @@
 // client/src/pages/Dashboard.tsx
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom'; // <-- NEW: Imported Link
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 
@@ -9,10 +9,15 @@ export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
   const [error, setError] = useState('');
   const [listings, setListings] = useState<any[]>([]);
+  
+  // --- NEW: Favorites State ---
+  const [favorites, setFavorites] = useState<number[]>([]);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
   
-  const [viewMode, setViewMode] = useState<'All' | 'Mine'>('All');
+  // --- NEW: Added 'Wishlist' to view modes ---
+  const [viewMode, setViewMode] = useState<'All' | 'Mine' | 'Wishlist'>('All');
 
   const [newTitle, setNewTitle] = useState('');
   const [newPrice, setNewPrice] = useState('');
@@ -26,8 +31,13 @@ export default function Dashboard() {
       try {
         const userRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/dashboard-data', { headers: { Authorization: `Bearer ${token}` } });
         setUser(userRes.data.userThatRequestedThis);
+        
         const listingsRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/listings', { headers: { Authorization: `Bearer ${token}` } });
         setListings(listingsRes.data);
+
+        // --- NEW: Fetch user's saved favorites on load ---
+        const favRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/favorites', { headers: { Authorization: `Bearer ${token}` } });
+        setFavorites(favRes.data.favoriteIds || []);
       } catch (err) {
         localStorage.removeItem('token');
         navigate('/login');
@@ -77,6 +87,26 @@ export default function Dashboard() {
     }
   };
 
+  // --- NEW: Toggle Favorite Logic ---
+  const handleToggleFavorite = async (listingId: number) => {
+    const token = localStorage.getItem('token');
+    const isFavorited = favorites.includes(listingId);
+    
+    try {
+      if (isFavorited) {
+        // If already favorited, remove it
+        await axios.delete(`https://student-marketplace-ho49.onrender.com/api/favorites/${listingId}`, { headers: { Authorization: `Bearer ${token}` } });
+        setFavorites(favorites.filter(id => id !== listingId));
+      } else {
+        // If not favorited, add it
+        await axios.post(`https://student-marketplace-ho49.onrender.com/api/favorites`, { listing_id: listingId }, { headers: { Authorization: `Bearer ${token}` } });
+        setFavorites([...favorites, listingId]);
+      }
+    } catch (err) {
+      alert("Failed to update wishlist.");
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/login');
@@ -93,10 +123,16 @@ export default function Dashboard() {
     window.location.href = `mailto:${sellerEmail}?subject=${subject}&body=${body}`;
   };
 
+  // --- UPDATED: The Magic Filter Logic ---
   const filteredListings = listings.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = filterCategory === 'All' || item.category === filterCategory;
-    const matchesViewMode = viewMode === 'All' || (user && item.seller_email === user.email);
+    
+    const matchesViewMode = 
+      viewMode === 'All' || 
+      (viewMode === 'Mine' && user && item.seller_email === user.email) ||
+      (viewMode === 'Wishlist' && favorites.includes(item.id)); // Only show items whose ID is in the favorites array
+
     return matchesSearch && matchesCategory && matchesViewMode;
   });
 
@@ -106,19 +142,14 @@ export default function Dashboard() {
         <h2>Student Marketplace | PCCOE</h2>
         <div className="user-info" style={{ display: 'flex', alignItems: 'center' }}>
           {user && <span style={{ marginRight: '15px' }}>Logged in: <strong>{user.college_domain}</strong></span>}
-          
-          {/* --- NEW: Link to Profile Page --- */}
           <Link to="/profile" style={{ color: 'white', textDecoration: 'none', marginRight: '15px', fontWeight: 'bold', background: '#2b2b36', padding: '8px 12px', borderRadius: '4px' }}>
             👤 My Profile
           </Link>
-          {/* --------------------------------- */}
-
           <button onClick={handleLogout} className="btn-danger">Log Out</button>
         </div>
       </div>
 
       <div className="dashboard-body">
-        
         <div className="create-listing-panel">
           <h3>Post an Item</h3>
           <form onSubmit={handleCreateListing}>
@@ -142,18 +173,16 @@ export default function Dashboard() {
         <div className="listings-panel">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
             
+            {/* UPDATED: Added Wishlist Toggle */}
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button 
-                onClick={() => setViewMode('All')} 
-                style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'All' ? '#b185ff' : '#2b2b36', color: 'white' }}
-              >
+              <button onClick={() => setViewMode('All')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'All' ? '#b185ff' : '#2b2b36', color: 'white' }}>
                 All Items
               </button>
-              <button 
-                onClick={() => setViewMode('Mine')} 
-                style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'Mine' ? '#b185ff' : '#2b2b36', color: 'white' }}
-              >
+              <button onClick={() => setViewMode('Mine')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'Mine' ? '#b185ff' : '#2b2b36', color: 'white' }}>
                 My Items
+              </button>
+              <button onClick={() => setViewMode('Wishlist')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'Wishlist' ? '#ff6b6b' : '#2b2b36', color: 'white' }}>
+                ❤️ Wishlist
               </button>
             </div>
             
@@ -172,17 +201,22 @@ export default function Dashboard() {
             {filteredListings.length === 0 ? (
               <p style={{ color: 'var(--text)' }}>No items found.</p>
             ) : (
-              filteredListings.map((item, index) => (
-                <motion.div 
-                  key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: index * 0.1 }}
-                  className="item-card"
-                  style={{ opacity: item.status === 'sold' ? 0.6 : 1 }}
-                >
+              filteredListings.map((item, index) => {
+                const isFavorited = favorites.includes(item.id);
+
+                return (
+                <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: index * 0.1 }} className="item-card" style={{ opacity: item.status === 'sold' ? 0.6 : 1, position: 'relative' }}>
                   
+                  {/* --- NEW: Favorite Heart Button --- */}
+                  <button 
+                    onClick={() => handleToggleFavorite(item.id)}
+                    style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', padding: '8px', cursor: 'pointer', zIndex: 10, fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    {isFavorited ? '❤️' : '🤍'}
+                  </button>
+
                   {item.status === 'sold' && (
-                    <div style={{ position: 'absolute', top: '10px', right: '10px', background: '#ff6b6b', color: 'white', padding: '5px 10px', borderRadius: '4px', fontWeight: 'bold', zIndex: 10 }}>
-                      SOLD
-                    </div>
+                    <div style={{ position: 'absolute', top: '10px', right: '10px', background: '#ff6b6b', color: 'white', padding: '5px 10px', borderRadius: '4px', fontWeight: 'bold', zIndex: 10 }}>SOLD</div>
                   )}
 
                   {item.imageUrl ? (
@@ -200,33 +234,24 @@ export default function Dashboard() {
                   {user && user.email === item.seller_email && (
                     <div style={{ display: 'flex', gap: '8px', marginTop: '15px' }}>
                       {item.status !== 'sold' && (
-                        <button onClick={() => handleMarkSold(item.id)} style={{ flex: 1, padding: '8px', background: '#51cf66', color: '#1e1e24', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>
-                          Mark Sold
-                        </button>
+                        <button onClick={() => handleMarkSold(item.id)} style={{ flex: 1, padding: '8px', background: '#51cf66', color: '#1e1e24', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>Mark Sold</button>
                       )}
-                      <button onClick={() => handleDelete(item.id)} className="btn-danger" style={{ flex: 1, padding: '8px', fontSize: '0.8rem' }}>
-                        Delete
-                      </button>
+                      <button onClick={() => handleDelete(item.id)} className="btn-danger" style={{ flex: 1, padding: '8px', fontSize: '0.8rem' }}>Delete</button>
                     </div>
                   )}
 
                   {user && user.email !== item.seller_email && item.status !== 'sold' && (
                     <div style={{ marginTop: '15px', borderTop: '1px solid #333', paddingTop: '10px' }}>
-                      <p style={{ fontSize: '0.8rem', color: '#a0a0b0', marginBottom: '10px', textAlign: 'center' }}>
-                        📞 <strong>{item.seller_phone || '919876543210'}</strong>
-                      </p>
+                      <p style={{ fontSize: '0.8rem', color: '#a0a0b0', marginBottom: '10px', textAlign: 'center' }}>📞 <strong>{item.seller_phone || '919876543210'}</strong></p>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button onClick={() => handleWhatsAppContact(item.seller_phone || '919876543210', item.title)} style={{ flex: 1, padding: '8px', background: '#25D366', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>
-                          💬 WhatsApp
-                        </button>
-                        <button onClick={() => handleEmailContact(item.seller_email, item.title)} style={{ flex: 1, padding: '8px', background: '#b185ff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>
-                          ✉️ Email
-                        </button>
+                        <button onClick={() => handleWhatsAppContact(item.seller_phone || '919876543210', item.title)} style={{ flex: 1, padding: '8px', background: '#25D366', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>💬 WhatsApp</button>
+                        <button onClick={() => handleEmailContact(item.seller_email, item.title)} style={{ flex: 1, padding: '8px', background: '#b185ff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>✉️ Email</button>
                       </div>
                     </div>
                   )}
                 </motion.div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
