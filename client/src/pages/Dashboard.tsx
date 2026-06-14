@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import toast, { Toaster } from 'react-hot-toast'; 
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -10,13 +11,19 @@ export default function Dashboard() {
   const [listings, setListings] = useState<any[]>([]);
   const [favorites, setFavorites] = useState<number[]>([]);
 
-  // --- NEW: Advanced Search State ---
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSearching, setIsSearching] = useState(false);
+  
+  // --- NEW: Image Lightbox State ---
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   
+  const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'All' | 'Mine' | 'Wishlist'>('All');
 
   const [newTitle, setNewTitle] = useState('');
@@ -24,7 +31,6 @@ export default function Dashboard() {
   const [newPostCategory, setNewPostCategory] = useState('Textbooks');
   const [imageFile, setImageFile] = useState<File | null>(null);
 
-  // 1. Fetch initial data on load
   useEffect(() => {
     const fetchDashboardData = async () => {
       const token = localStorage.getItem('token');
@@ -33,26 +39,25 @@ export default function Dashboard() {
         const userRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/dashboard-data', { headers: { Authorization: `Bearer ${token}` } });
         setUser(userRes.data.userThatRequestedThis);
         
-        // Fetch initial feed (newest items)
         const listingsRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/listings', { headers: { Authorization: `Bearer ${token}` } });
         setListings(listingsRes.data);
 
         const favRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/favorites', { headers: { Authorization: `Bearer ${token}` } });
         setFavorites(favRes.data.favoriteIds || []);
       } catch (err: any) {
-        console.error("DASHBOARD CRASH:", err);
         localStorage.removeItem('token');
         navigate('/login');
+      } finally {
+        setIsLoading(false); 
       }
     };
     fetchDashboardData();
   }, [navigate]);
 
-  // --- NEW: The Magic Search Engine Function ---
   const applyAdvancedFilters = async () => {
+    setIsSearching(true); 
     const token = localStorage.getItem('token');
     try {
-      // Build the dynamic URL query based on what the user typed
       const query = new URLSearchParams();
       if (searchTerm) query.append('search', searchTerm);
       if (filterCategory !== 'All') query.append('category', filterCategory);
@@ -60,22 +65,24 @@ export default function Dashboard() {
       if (maxPrice) query.append('maxPrice', maxPrice);
       if (sortBy) query.append('sortBy', sortBy);
 
-      // Ask the backend to do the heavy lifting!
       const res = await axios.get(`https://student-marketplace-ho49.onrender.com/api/listings?${query.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      // Update the screen with the perfectly filtered results
       setListings(res.data);
+      toast.success('Filters applied!'); 
     } catch (err) {
-      alert("Failed to apply filters. Is the server running?");
+      toast.error('Failed to search database.'); 
+    } finally {
+      setIsSearching(false); 
     }
   };
-  // ---------------------------------------------
 
   const handleCreateListing = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = localStorage.getItem('token');
+    const toastId = toast.loading('Compressing & Posting...'); 
+
     try {
       const formData = new FormData();
       formData.append('title', newTitle);
@@ -88,8 +95,10 @@ export default function Dashboard() {
       setNewTitle(''); setNewPrice(''); setNewPostCategory('Textbooks'); setImageFile(null); 
       const fileInput = document.getElementById('image-upload') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
+      
+      toast.success('Item posted successfully!', { id: toastId }); 
     } catch (err) {
-      alert("Failed to create listing.");
+      toast.error('Failed to create listing.', { id: toastId });
     }
   };
 
@@ -99,8 +108,9 @@ export default function Dashboard() {
     try {
       await axios.delete(`https://student-marketplace-ho49.onrender.com/api/listings/${id}`, { headers: { Authorization: `Bearer ${token}` } });
       setListings(listings.filter(item => item.id !== id));
+      toast.success('Item deleted.');
     } catch (err) {
-      alert("Failed to delete listing.");
+      toast.error('Failed to delete item.');
     }
   };
 
@@ -109,8 +119,9 @@ export default function Dashboard() {
     try {
       const response = await axios.put(`https://student-marketplace-ho49.onrender.com/api/listings/${id}/status`, {}, { headers: { Authorization: `Bearer ${token}` } });
       setListings(listings.map(item => item.id === id ? response.data : item));
+      toast.success('Item marked as SOLD! 🎉');
     } catch (err) {
-      alert("Failed to update status.");
+      toast.error('Failed to update status.');
     }
   };
 
@@ -121,18 +132,21 @@ export default function Dashboard() {
       if (isFavorited) {
         await axios.delete(`https://student-marketplace-ho49.onrender.com/api/favorites/${listingId}`, { headers: { Authorization: `Bearer ${token}` } });
         setFavorites(favorites.filter(id => id !== listingId));
+        toast('Removed from wishlist', { icon: '💔' });
       } else {
         await axios.post(`https://student-marketplace-ho49.onrender.com/api/favorites`, { listing_id: listingId }, { headers: { Authorization: `Bearer ${token}` } });
         setFavorites([...favorites, listingId]);
+        toast.success('Added to wishlist!');
       }
     } catch (err) {
-      alert("Failed to update wishlist.");
+      toast.error('Failed to update wishlist.');
     }
   };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/login');
+    toast.success('Logged out safely.');
   };
 
   const handleWhatsAppContact = (sellerPhone: string, itemTitle: string) => {
@@ -146,15 +160,25 @@ export default function Dashboard() {
     window.location.href = `mailto:${sellerEmail}?subject=${subject}&body=${body}`;
   };
 
-  // We only keep the View Mode (Mine/Wishlist) filter here on the frontend!
   const finalDisplayListings = listings.filter(item => {
     if (viewMode === 'Mine') return user && item.seller_email === user.email;
     if (viewMode === 'Wishlist') return favorites.includes(item.id);
-    return true; // viewMode === 'All'
+    return true; 
   });
+
+  if (isLoading) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#1e1e24', color: 'white' }}>
+        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} style={{ width: '40px', height: '40px', border: '4px solid rgba(255,255,255,0.1)', borderTop: '4px solid #b185ff', borderRadius: '50%', marginBottom: '20px' }} />
+        <h2>Loading PCCOE Marketplace...</h2>
+      </div>
+    );
+  }
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="dashboard-wrapper">
+      <Toaster position="bottom-right" toastOptions={{ style: { background: '#333', color: '#fff', borderRadius: '8px' } }} />
+
       <div className="dashboard-header">
         <h2>Student Marketplace | PCCOE</h2>
         <div className="user-info" style={{ display: 'flex', alignItems: 'center' }}>
@@ -188,11 +212,8 @@ export default function Dashboard() {
         </div>
 
         <div className="listings-panel">
-          
-          {/* --- NEW: Advanced Filter UI Block --- */}
           <div style={{ background: '#2b2b36', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
-            
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               <input type="text" className="form-input" placeholder="Search items..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ margin: 0, flex: 1 }} />
               <select className="form-input" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={{ margin: 0, width: '150px' }}>
                 <option value="All">All Categories</option>
@@ -200,65 +221,62 @@ export default function Dashboard() {
                 <option value="Electronics">Electronics</option>
                 <option value="Dorm Essentials">Dorm Essentials</option>
               </select>
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ color: '#a0a0b0', fontWeight: 'bold', fontSize: '0.9rem' }}>Filters:</span>
-              <input type="number" placeholder="Min ₹" className="form-input" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} style={{ margin: 0, width: '90px', padding: '6px' }} />
-              <span style={{ color: '#a0a0b0' }}>-</span>
-              <input type="number" placeholder="Max ₹" className="form-input" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} style={{ margin: 0, width: '90px', padding: '6px' }} />
-              
-              <select className="form-input" value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ margin: 0, width: '150px', padding: '6px' }}>
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="price_low">Price: Low to High</option>
-                <option value="price_high">Price: High to Low</option>
-              </select>
-
-              <button onClick={applyAdvancedFilters} className="btn-primary" style={{ padding: '8px 20px', marginLeft: 'auto' }}>
-                🔍 Apply Search
+              <button onClick={applyAdvancedFilters} className="btn-primary" style={{ padding: '8px 20px', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }} disabled={isSearching}>
+                {isSearching ? '⏳ Searching...' : '🔍 Search'}
+              </button>
+              <button onClick={() => setShowFilters(!showFilters)} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid #b185ff', color: '#b185ff', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                {showFilters ? 'Hide Filters ⬆️' : 'Advanced Filters ⚙️'}
               </button>
             </div>
-
+            {showFilters && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #444', flexWrap: 'wrap' }}>
+                <span style={{ color: '#a0a0b0', fontWeight: 'bold', fontSize: '0.9rem' }}>Price Range:</span>
+                <input type="number" placeholder="Min ₹" className="form-input" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} style={{ margin: 0, width: '90px', padding: '6px' }} />
+                <span style={{ color: '#a0a0b0' }}>-</span>
+                <input type="number" placeholder="Max ₹" className="form-input" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} style={{ margin: 0, width: '90px', padding: '6px' }} />
+                <span style={{ color: '#a0a0b0', fontWeight: 'bold', fontSize: '0.9rem', marginLeft: '15px' }}>Sort By:</span>
+                <select className="form-input" value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ margin: 0, width: '150px', padding: '6px' }}>
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="price_low">Price: Low to High</option>
+                  <option value="price_high">Price: High to Low</option>
+                </select>
+              </motion.div>
+            )}
           </div>
-          {/* -------------------------------------- */}
 
-          {/* View Mode Toggle Buttons */}
           <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-            <button onClick={() => setViewMode('All')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'All' ? '#b185ff' : '#2b2b36', color: 'white' }}>
-              All Results
-            </button>
-            <button onClick={() => setViewMode('Mine')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'Mine' ? '#b185ff' : '#2b2b36', color: 'white' }}>
-              My Items
-            </button>
-            <button onClick={() => setViewMode('Wishlist')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'Wishlist' ? '#ff6b6b' : '#2b2b36', color: 'white' }}>
-              ❤️ Wishlist
-            </button>
+            <button onClick={() => setViewMode('All')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'All' ? '#b185ff' : '#2b2b36', color: 'white' }}>All Results</button>
+            <button onClick={() => setViewMode('Mine')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'Mine' ? '#b185ff' : '#2b2b36', color: 'white' }}>My Items</button>
+            <button onClick={() => setViewMode('Wishlist')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'Wishlist' ? '#ff6b6b' : '#2b2b36', color: 'white' }}>❤️ Wishlist</button>
           </div>
 
           <div className="listings-grid">
             {finalDisplayListings.length === 0 ? (
-              <p style={{ color: 'var(--text)' }}>No items found matching those filters.</p>
+              <div style={{ padding: '40px', textAlign: 'center', background: '#2b2b36', borderRadius: '8px', width: '100%', gridColumn: '1 / -1' }}>
+                <h3 style={{ color: '#a0a0b0' }}>No items found</h3>
+                <p style={{ color: 'var(--text)', fontSize: '0.9rem' }}>Try adjusting your filters or search terms.</p>
+              </div>
             ) : (
               finalDisplayListings.map((item, index) => {
                 const isFavorited = favorites.includes(item.id);
-
                 return (
                 <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: index * 0.1 }} className="item-card" style={{ opacity: item.status === 'sold' ? 0.6 : 1, position: 'relative' }}>
-                  
-                  <button 
-                    onClick={() => handleToggleFavorite(item.id)}
-                    style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', padding: '8px', cursor: 'pointer', zIndex: 10, fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  >
+                  <button onClick={() => handleToggleFavorite(item.id)} style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', padding: '8px', cursor: 'pointer', zIndex: 10, fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {isFavorited ? '❤️' : '🤍'}
                   </button>
-
                   {item.status === 'sold' && (
                     <div style={{ position: 'absolute', top: '10px', right: '10px', background: '#ff6b6b', color: 'white', padding: '5px 10px', borderRadius: '4px', fontWeight: 'bold', zIndex: 10 }}>SOLD</div>
                   )}
 
+                  {/* UPGRADED IMAGE: Clickable with zoom-in cursor */}
                   {item.imageUrl ? (
-                    <img src={`https://student-marketplace-ho49.onrender.com${item.imageUrl}`} alt={item.title} style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', marginBottom: '15px' }} />
+                    <img 
+                      src={`https://student-marketplace-ho49.onrender.com${item.imageUrl}`} 
+                      alt={item.title} 
+                      onClick={() => setSelectedImage(item.imageUrl)}
+                      style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', marginBottom: '15px', cursor: 'zoom-in' }} 
+                    />
                   ) : (
                     <div className="item-image-empty">No Image</div>
                   )}
@@ -266,14 +284,11 @@ export default function Dashboard() {
                   <h4 style={{ margin: '10px 0', color: 'var(--text-h)', textDecoration: item.status === 'sold' ? 'line-through' : 'none' }}>{item.title}</h4>
                   <p className="item-price">₹{item.price}</p>
                   <span className="item-badge">{item.category}</span>
-                  
                   <p style={{ fontSize: '0.75rem', color: 'var(--text)', marginTop: '10px' }}>Seller: {item.seller_email}</p>
 
                   {user && user.email === item.seller_email && (
                     <div style={{ display: 'flex', gap: '8px', marginTop: '15px' }}>
-                      {item.status !== 'sold' && (
-                        <button onClick={() => handleMarkSold(item.id)} style={{ flex: 1, padding: '8px', background: '#51cf66', color: '#1e1e24', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>Mark Sold</button>
-                      )}
+                      {item.status !== 'sold' && <button onClick={() => handleMarkSold(item.id)} style={{ flex: 1, padding: '8px', background: '#51cf66', color: '#1e1e24', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>Mark Sold</button>}
                       <button onClick={() => handleDelete(item.id)} className="btn-danger" style={{ flex: 1, padding: '8px', fontSize: '0.8rem' }}>Delete</button>
                     </div>
                   )}
@@ -294,6 +309,37 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* --- NEW: The Full-Screen Lightbox Modal --- */}
+      <AnimatePresence>
+        {selectedImage && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            onClick={() => setSelectedImage(null)}
+            style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'zoom-out' }}
+          >
+            <motion.img 
+              initial={{ scale: 0.8 }} 
+              animate={{ scale: 1 }} 
+              exit={{ scale: 0.8 }} 
+              src={`https://student-marketplace-ho49.onrender.com${selectedImage}`} 
+              alt="Full screen preview" 
+              onClick={(e) => e.stopPropagation()} // Prevent click from closing immediately if they click the image itself
+              style={{ maxWidth: '90%', maxHeight: '90%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0px 0px 30px rgba(0,0,0,0.5)', cursor: 'default' }}
+            />
+            <button 
+              onClick={() => setSelectedImage(null)} 
+              style={{ position: 'absolute', top: '20px', right: '30px', background: 'transparent', border: 'none', color: 'white', fontSize: '2.5rem', cursor: 'pointer' }}
+            >
+              ×
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* ------------------------------------------- */}
+
     </motion.div>
   );
 }

@@ -5,8 +5,9 @@ import cors from 'cors';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import sharp from 'sharp'; // <-- NEW: Import Image Compressor
 import sequelize from './database';
-import { Op } from 'sequelize'; // <-- Imported SQL Operators
+import { Op } from 'sequelize'; 
 import User from './models/User';
 import Category from './models/Category';
 import Listing from './models/Listing'; 
@@ -19,21 +20,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --- IMAGE UPLOAD SETUP ---
+// --- UPGRADED IMAGE UPLOAD SETUP ---
 const uploadDir = path.join(__dirname, '../uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
 }
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// NEW: Store files in RAM temporarily so Sharp can compress them first
+const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 app.use('/uploads', express.static(uploadDir));
@@ -45,90 +39,70 @@ app.get('/api/dashboard-data', authenticateToken, (req: AuthRequest, res) => {
   res.json({ message: 'VIP Area', userThatRequestedThis: req.user });
 });
 
-// --- UPGRADED ROUTE: Fetch listings with Advanced Search & Filters ---
 app.get('/api/listings', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    // 1. Catch the query parameters sent by the frontend
     const { search, category, minPrice, maxPrice, sortBy } = req.query;
-
     let whereClause: any = {};
 
-    // 2. Search by Title (Case-Insensitive)
-    if (search) {
-      whereClause.title = { [Op.iLike]: `%${search}%` }; 
-    }
-
-    // 3. Filter by Category
-    if (category && category !== 'All') {
-      whereClause.category = category;
-    }
-
-    // 4. Filter by Price Range
+    if (search) whereClause.title = { [Op.iLike]: `%${search}%` }; 
+    if (category && category !== 'All') whereClause.category = category;
     if (minPrice || maxPrice) {
       whereClause.price = {};
-      if (minPrice) whereClause.price[Op.gte] = Number(minPrice); // Greater Than or Equal
-      if (maxPrice) whereClause.price[Op.lte] = Number(maxPrice); // Less Than or Equal
+      if (minPrice) whereClause.price[Op.gte] = Number(minPrice); 
+      if (maxPrice) whereClause.price[Op.lte] = Number(maxPrice); 
     }
 
-    // 5. Sorting Logic
-    let orderClause: any = [['createdAt', 'DESC']]; // Default: Newest first
+    let orderClause: any = [['createdAt', 'DESC']]; 
     if (sortBy === 'price_low') orderClause = [['price', 'ASC']];
     if (sortBy === 'price_high') orderClause = [['price', 'DESC']];
     if (sortBy === 'oldest') orderClause = [['createdAt', 'ASC']];
 
-    // 6. Ask Neon Database to do the heavy lifting!
-    const allListings = await Listing.findAll({
-      where: whereClause,
-      order: orderClause
-    });
-
+    const allListings = await Listing.findAll({ where: whereClause, order: orderClause });
     res.json(allListings);
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'Server error fetching listings' });
   }
 });
-// ---------------------------------------------------------------------
 
-// --- ROUTE: Fetch ONLY the logged-in user's listings for their Profile ---
 app.get('/api/profile/listings', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const userEmail = req.user?.email;
-    
-    // This translates directly to: SELECT * FROM listings WHERE seller_email = 'user@email.com'
     const myListings = await Listing.findAll({
-      where: { seller_email: userEmail },
+      where: { seller_email: req.user?.email },
       order: [['createdAt', 'DESC']]
     });
-    
     res.json(myListings);
   } catch (err) {
     res.status(500).json({ error: 'Server error fetching profile listings' });
   }
 });
-// -----------------------------------------------------------------------------
 
-// POST: Create a new listing
+// --- UPGRADED POST ROUTE (With Sharp Compression) ---
 app.post('/api/listings', authenticateToken, upload.single('image'), async (req: AuthRequest, res) => {
   try {
     const { title, price, category } = req.body;
     const seller_email = req.user?.email || 'unknown@university.edu';
     
-    // --- Look up the user in the database to get their phone number ---
     const currentUser: any = await User.findOne({ where: { email: seller_email } });
     const seller_phone = currentUser?.phone_number || null;
-    // -----------------------------------------------------------------------
 
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    let imageUrl = null;
 
-    // Save the new listing with the phone number attached
+    // NEW: Compression Logic
+    if (req.file) {
+      const filename = Date.now() + '-' + Math.round(Math.random() * 1E9) + '.webp';
+      const outputPath = path.join(uploadDir, filename);
+
+      // Take the massive image, resize it to a max of 800px wide, and compress to WebP
+      await sharp(req.file.buffer)
+        .resize({ width: 800, withoutEnlargement: true })
+        .webp({ quality: 80 })
+        .toFile(outputPath);
+
+      imageUrl = `/uploads/${filename}`;
+    }
+
     const newListing = await Listing.create({
-      title,
-      price,
-      category,
-      seller_email,
-      seller_phone, 
-      imageUrl
+      title, price, category, seller_email, seller_phone, imageUrl
     });
 
     res.status(201).json(newListing);
@@ -137,196 +111,98 @@ app.post('/api/listings', authenticateToken, upload.single('image'), async (req:
     res.status(500).json({ error: 'Server error creating listing' });
   }
 });
+// ----------------------------------------------------
 
-// DELETE: Remove a listing securely
 app.delete('/api/listings/:id', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const listingId = req.params.id;
-    const userEmail = req.user?.email;
+    const listing: any = await Listing.findByPk(req.params.id);
+    if (!listing) return res.status(404).json({ error: 'Listing not found' });
+    if (listing.seller_email !== req.user?.email) return res.status(403).json({ error: 'Security alert' });
 
-    // 1. Find the listing in the database
-    const listing: any = await Listing.findByPk(listingId);
-
-    if (!listing) {
-      return res.status(404).json({ error: 'Listing not found' });
-    }
-
-    // 2. Security Check: Does the logged-in user own this listing?
-    if (listing.seller_email !== userEmail) {
-      return res.status(403).json({ error: 'Security alert: You can only delete your own listings' });
-    }
-
-    // 3. Optional Cleanup: Delete the image file from the hard drive if it exists
     if (listing.imageUrl) {
       const imagePath = path.join(__dirname, '..', listing.imageUrl);
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
-      }
+      if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
     }
 
-    // 4. Destroy the database record!
     await listing.destroy();
     res.json({ message: 'Listing deleted successfully' });
-    
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'Server error deleting listing' });
   }
 });
 
-// --- PUT ROUTE: Mark a listing as SOLD ---
 app.put('/api/listings/:id/status', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const listingId = req.params.id;
-    const userEmail = req.user?.email;
-
-    // 1. Find the listing
-    const listing: any = await Listing.findByPk(listingId);
+    const listing: any = await Listing.findByPk(req.params.id);
     if (!listing) return res.status(404).json({ error: 'Listing not found' });
+    if (listing.seller_email !== req.user?.email) return res.status(403).json({ error: 'Unauthorized' });
 
-    // 2. Security Check: Only the owner can mark it sold
-    if (listing.seller_email !== userEmail) {
-      return res.status(403).json({ error: 'You can only update your own listings' });
-    }
-
-    // 3. Update and save
     listing.status = 'sold';
     await listing.save();
-    
     res.json(listing);
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'Server error updating status' });
   }
 });
-// ----------------------------------------------
 
-// --- PUT ROUTE: Update a listing's price ---
 app.put('/api/listings/:id/price', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const listingId = req.params.id;
-    const userEmail = req.user?.email;
-    const { newPrice } = req.body; 
-
-    if (!newPrice || isNaN(newPrice)) {
-      return res.status(400).json({ error: 'A valid price is required' });
-    }
-
-    // 1. Find the listing
-    const listing: any = await Listing.findByPk(listingId);
+    const listing: any = await Listing.findByPk(req.params.id);
     if (!listing) return res.status(404).json({ error: 'Listing not found' });
+    if (listing.seller_email !== req.user?.email) return res.status(403).json({ error: 'Unauthorized' });
 
-    // 2. Security Check: Only the owner can change the price
-    if (listing.seller_email !== userEmail) {
-      return res.status(403).json({ error: 'You can only edit your own listings' });
-    }
-
-    // 3. Update the price and save
-    listing.price = newPrice;
+    listing.price = req.body.newPrice;
     await listing.save();
-    
     res.json(listing);
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'Server error updating price' });
   }
 });
-// ----------------------------------------------
 
-// --- WISHLIST / FAVORITES ROUTES ---
-
-// 1. POST: Add an item to the user's wishlist
 app.post('/api/favorites', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const userEmail = req.user?.email;
-    const { listing_id } = req.body;
+    const existingFavorite = await Favorite.findOne({ where: { user_email: req.user?.email, listing_id: req.body.listing_id } });
+    if (existingFavorite) return res.status(400).json({ message: 'Item is already in your wishlist' });
 
-    if (!userEmail) return res.status(401).json({ error: 'Unauthorized' });
-
-    // Check if it already exists to prevent duplicates
-    const existingFavorite = await Favorite.findOne({
-      where: { user_email: userEmail, listing_id }
-    });
-
-    if (existingFavorite) {
-      return res.status(400).json({ message: 'Item is already in your wishlist' });
-    }
-
-    const newFavorite = await Favorite.create({
-      user_email: userEmail,
-      listing_id
-    });
-
+    const newFavorite = await Favorite.create({ user_email: req.user?.email, listing_id: req.body.listing_id });
     res.status(201).json(newFavorite);
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'Server error adding favorite' });
   }
 });
 
-// 2. DELETE: Remove an item from the wishlist
 app.delete('/api/favorites/:listingId', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const userEmail = req.user?.email;
-    const listingId = req.params.listingId;
-
-    if (!userEmail) return res.status(401).json({ error: 'Unauthorized' });
-
-    await Favorite.destroy({
-      where: { user_email: userEmail, listing_id: listingId }
-    });
-
+    await Favorite.destroy({ where: { user_email: req.user?.email, listing_id: req.params.listingId } });
     res.json({ message: 'Item removed from wishlist' });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'Server error removing favorite' });
   }
 });
 
-// 3. GET: Fetch all favorited items for the logged-in user
 app.get('/api/favorites', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const userEmail = req.user?.email;
-    if (!userEmail) return res.status(401).json({ error: 'Unauthorized' });
-
-    // First, find all the listing IDs the user has saved
-    const userFavorites: any = await Favorite.findAll({
-      where: { user_email: userEmail }
-    });
-
+    const userFavorites: any = await Favorite.findAll({ where: { user_email: req.user?.email } });
     const favoriteListingIds = userFavorites.map((fav: any) => fav.listing_id);
 
-    // Then, fetch the actual listing details for those IDs
     const favoritedItems = await Listing.findAll({
       where: { id: favoriteListingIds },
       order: [['createdAt', 'DESC']]
     });
 
-    res.json({
-      favoriteIds: favoriteListingIds, // Sends back just the IDs (useful for UI toggle states)
-      items: favoritedItems            // Sends back the full item data
-    });
+    res.json({ favoriteIds: favoriteListingIds, items: favoritedItems });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'Server error fetching favorites' });
   }
 });
-// ---------------------------------------
 
-// Test the database connection AND sync the models
 sequelize.authenticate()
   .then(async () => {
     console.log('✅ Database connection has been established successfully.');
     await sequelize.sync({ alter: true }); 
     console.log('📦 Database tables synced!');
 
-    // Use Render's dynamically assigned port, or fall back to 5001 for local development
     const PORT = process.env.PORT || 5001;
-
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   })
-  .catch((error) => {
-    console.error('❌ Unable to connect to the database:', error);
-  });
+  .catch((error) => console.error('❌ Unable to connect to the database:', error));
