@@ -16,6 +16,7 @@ export default function Dashboard() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showSellForm, setShowSellForm] = useState(false); // --- NEW: Toggle for the sell form
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
@@ -23,7 +24,6 @@ export default function Dashboard() {
   const [maxPrice, setMaxPrice] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   
-  const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'All' | 'Mine' | 'Wishlist'>('All');
 
   const [newTitle, setNewTitle] = useState('');
@@ -108,8 +108,11 @@ export default function Dashboard() {
       const response = await axios.post('https://student-marketplace-ho49.onrender.com/api/listings', formData, { headers: { Authorization: `Bearer ${token}` } });
       setListings([response.data, ...listings]);
       setNewTitle(''); setNewPrice(''); setNewPostCategory('Textbooks'); setImageFile(null); 
+      
       const fileInput = document.getElementById('image-upload') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
+      
+      setShowSellForm(false); // --- NEW: Close the form automatically after success!
       
       toast.success('Item posted successfully!', { id: toastId }); 
     } catch (err) {
@@ -187,12 +190,11 @@ export default function Dashboard() {
     setIsSidebarOpen(false); 
   };
 
-  // --- NEW: Helper to format the email into a readable Name ---
   const getDisplayName = () => {
     if (!user || !user.email) return '';
     if (user.name) return user.name;
-    const prefix = user.email.split('@')[0].replace(/[0-9]/g, ''); // Removes numbers
-    return prefix.charAt(0).toUpperCase() + prefix.slice(1); // Capitalizes first letter
+    const prefix = user.email.split('@')[0].replace(/[0-9]/g, ''); 
+    return prefix.charAt(0).toUpperCase() + prefix.slice(1); 
   };
 
   if (isLoading) {
@@ -216,7 +218,6 @@ export default function Dashboard() {
           </div>
           
           <div className="amz-actions">
-            {/* --- ADMIN EXPORT BUTTON (Only visible to you) --- */}
             {user && user.email === 'bhagatpankaj7249@gmail.com' && (
               <button onClick={() => window.open('https://student-marketplace-ho49.onrender.com/api/admin/export-data')} 
                       style={{ background: '#2563eb', color: 'white', padding: '5px 10px', fontSize: '0.8rem', border: 'none', borderRadius: '4px', cursor: 'pointer', marginRight: '10px' }}>
@@ -262,14 +263,54 @@ export default function Dashboard() {
             <button className={filterCategory === 'Lost & Found' ? 'active' : ''} onClick={() => setFilterCategory('Lost & Found')}>Lost & Found</button>
           </div>
           
-          <a href="#sell-section" style={{ background: '#febd69', color: '#111', padding: '6px 12px', borderRadius: '4px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem', whiteSpace: 'nowrap', marginLeft: '10px' }}>
-            + Sell Item
-          </a>
+          {/* --- UPDATED BUTTON: Now acts as a toggle instead of an anchor link --- */}
+          <button 
+            onClick={() => { if(checkAuth()) setShowSellForm(!showSellForm); }} 
+            style={{ background: '#febd69', color: '#111', padding: '6px 12px', borderRadius: '4px', border: 'none', fontWeight: 'bold', fontSize: '0.9rem', whiteSpace: 'nowrap', marginLeft: '10px', cursor: 'pointer' }}
+          >
+            {showSellForm ? 'Close Form ✕' : '+ Sell Item'}
+          </button>
         </div>
       </div>
 
       <div className="dashboard-body" style={{ marginTop: '0' }}>
         
+        {/* --- NEW: The Slide-Down Form at the top of the page --- */}
+        <AnimatePresence>
+          {showSellForm && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }} 
+              animate={{ opacity: 1, height: 'auto' }} 
+              exit={{ opacity: 0, height: 0 }} 
+              style={{ overflow: 'hidden', marginBottom: '20px' }}
+            >
+              <div className="create-listing-panel" style={{ margin: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                  <h3 style={{ margin: 0 }}>Post a New Item</h3>
+                </div>
+                <form onSubmit={handleCreateListing}>
+                  <input type="text" className="form-input" placeholder="Item Title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} required />
+                  <input type="number" className="form-input" placeholder="Price (₹)" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} required />
+                  <select className="form-input" value={newPostCategory} onChange={(e) => setNewPostCategory(e.target.value)}>
+                    <option value="Textbooks">Textbooks</option>
+                    <option value="Electronics">Electronics</option>
+                    <option value="Dorm Essentials">Dorm Essentials</option>
+                    <option value="Lost & Found">Lost & Found 🔍</option>
+                    <option value="Skills & Services">Skills & Services 🤝</option>
+                  </select>
+                  <input type="file" id="image-upload" accept="image/*" className="form-input" onChange={(e) => setImageFile(e.target.files ? e.target.files[0] : null)} style={{ padding: '8px', cursor: 'pointer' }} />
+                  {imageFile && (
+                    <div style={{ marginTop: '10px', textAlign: 'center', marginBottom: '15px' }}>
+                      <img src={URL.createObjectURL(imageFile)} alt="Preview" style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px', border: '2px dashed var(--primary)' }} />
+                    </div>
+                  )}
+                  <button type="submit" className="btn-primary" style={{ background: '#febd69', color: '#111' }}>Create Listing</button>
+                </form>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="listings-panel">
           <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', padding: '0 10px' }}>
             <button onClick={() => setViewMode('All')} style={{ padding: '8px 15px', borderRadius: '20px', border: '1px solid #444', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'All' ? '#febd69' : '#2b2b36', color: viewMode === 'All' ? '#000' : 'white' }}>All Results</button>
@@ -345,38 +386,6 @@ export default function Dashboard() {
                })
             )}
           </div>
-        </div>
-
-        <div id="sell-section" className="create-listing-panel">
-          {user ? (
-            <>
-              <h3>Post an Item</h3>
-              <form onSubmit={handleCreateListing}>
-                <input type="text" className="form-input" placeholder="Item Title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} required />
-                <input type="number" className="form-input" placeholder="Price (₹)" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} required />
-                <select className="form-input" value={newPostCategory} onChange={(e) => setNewPostCategory(e.target.value)}>
-                  <option value="Textbooks">Textbooks</option>
-                  <option value="Electronics">Electronics</option>
-                  <option value="Dorm Essentials">Dorm Essentials</option>
-                  <option value="Lost & Found">Lost & Found 🔍</option>
-                  <option value="Skills & Services">Skills & Services 🤝</option>
-                </select>
-                <input type="file" id="image-upload" accept="image/*" className="form-input" onChange={(e) => setImageFile(e.target.files ? e.target.files[0] : null)} style={{ padding: '8px', cursor: 'pointer' }} />
-                {imageFile && (
-                  <div style={{ marginTop: '10px', textAlign: 'center', marginBottom: '15px' }}>
-                    <img src={URL.createObjectURL(imageFile)} alt="Preview" style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px', border: '2px dashed var(--primary)' }} />
-                  </div>
-                )}
-                <button type="submit" className="btn-primary" style={{ background: '#febd69', color: '#111' }}>Create Listing</button>
-              </form>
-            </>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', padding: '40px 20px' }}>
-              <h3 style={{ marginBottom: '15px' }}>Have something to sell?</h3>
-              <p style={{ color: 'var(--text)', marginBottom: '20px' }}>Join the PCCOE marketplace to post your items instantly.</p>
-              <button onClick={() => navigate('/login')} className="btn-primary" style={{ background: '#febd69', color: '#111' }}>Create an Account</button>
-            </div>
-          )}
         </div>
       </div>
 
