@@ -194,6 +194,12 @@ app.get('/api/favorites', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
+// --- ULTIMATE ERROR CATCHER ---
+app.use((err: any, req: any, res: any, next: any) => {
+  console.error("🔥 FATAL MIDDLEWARE ERROR:", err);
+  res.status(500).json({ error: "Image upload failed. Check server logs." });
+});
+
 sequelize.authenticate()
   .then(async () => {
     console.log('✅ Database connection has been established successfully.');
