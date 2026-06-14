@@ -32,11 +32,9 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        // 1. EVERYONE gets to see the listings (Public Route now!)
         const listingsRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/listings');
         setListings(listingsRes.data);
 
-        // 2. ONLY fetch user-specific data if they have a token
         const token = localStorage.getItem('token');
         if (token) {
           const userRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/dashboard-data', { headers: { Authorization: `Bearer ${token}` } });
@@ -45,11 +43,10 @@ export default function Dashboard() {
           const favRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/favorites', { headers: { Authorization: `Bearer ${token}` } });
           setFavorites(favRes.data.favoriteIds || []);
         } else {
-          setUser(null); // Explicitly set as guest
+          setUser(null); 
         }
       } catch (err: any) {
         console.error("Auth check failed:", err);
-        // If their token is expired/broken, just silently clear it and let them browse as a guest
         localStorage.removeItem('token');
         setUser(null);
       } finally {
@@ -59,8 +56,6 @@ export default function Dashboard() {
     fetchDashboardData();
   }, []);
 
-  // --- NEW: THE BOUNCER ---
-  // This checks if the user is logged in. If not, it shows a toast and redirects them.
   const checkAuth = () => {
     if (!user) {
       toast('Please log in or sign up to do this!', { icon: '🔒' });
@@ -69,7 +64,6 @@ export default function Dashboard() {
     }
     return true; 
   };
-  // -------------------------
 
   const applyAdvancedFilters = async () => {
     setIsSearching(true); 
@@ -94,7 +88,7 @@ export default function Dashboard() {
 
   const handleCreateListing = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!checkAuth()) return; // <-- The Bouncer checks ID here!
+    if (!checkAuth()) return;
 
     const token = localStorage.getItem('token');
     const toastId = toast.loading('Compressing & Posting...'); 
@@ -144,7 +138,7 @@ export default function Dashboard() {
   };
 
   const handleToggleFavorite = async (listingId: number) => {
-    if (!checkAuth()) return; // <-- Guests can't favorite items!
+    if (!checkAuth()) return; 
     
     const token = localStorage.getItem('token');
     const isFavorited = favorites.includes(listingId);
@@ -171,13 +165,13 @@ export default function Dashboard() {
   };
 
   const handleWhatsAppContact = (sellerPhone: string, itemTitle: string) => {
-    if (!checkAuth()) return; // <-- Hide contact info behind login
+    if (!checkAuth()) return; 
     const message = encodeURIComponent(`Hi! I saw your listing for "${itemTitle}" on the PCCOE Student Marketplace. Is it still available?`);
     window.open(`https://wa.me/${sellerPhone}?text=${message}`, '_blank');
   };
 
   const handleEmailContact = (sellerEmail: string, itemTitle: string) => {
-    if (!checkAuth()) return; // <-- Hide contact info behind login
+    if (!checkAuth()) return; 
     const subject = encodeURIComponent(`Interested in buying: ${itemTitle}`);
     const body = encodeURIComponent(`Hi!\n\nI saw your listing for "${itemTitle}" on the Student Marketplace and I am interested in buying it. Let me know when and where we can meet up!`);
     window.location.href = `mailto:${sellerEmail}?subject=${subject}&body=${body}`;
@@ -205,8 +199,6 @@ export default function Dashboard() {
       <div className="dashboard-header">
         <h2>Student Marketplace | PCCOE</h2>
         <div className="user-info" style={{ display: 'flex', alignItems: 'center' }}>
-          
-          {/* DYNAMIC HEADER: Shows Profile/Logout if User, or Login/Signup if Guest */}
           {user ? (
             <>
               <span style={{ marginRight: '15px' }}>Logged in: <strong>{user.college_domain}</strong></span>
@@ -220,13 +212,123 @@ export default function Dashboard() {
               Log In / Sign Up
             </button>
           )}
-
         </div>
       </div>
 
       <div className="dashboard-body">
         
-        {/* Only show the "Post an Item" form if the user is logged in! */}
+        {/* 1. LISTINGS AND SEARCH GO FIRST (Amazon Style) */}
+        <div className="listings-panel">
+          <div style={{ background: '#2b2b36', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <input type="text" className="form-input" placeholder="Search items..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ margin: 0, flex: 1 }} />
+              <select className="form-input" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={{ margin: 0, width: '150px' }}>
+                <option value="All">All Categories</option>
+                <option value="Textbooks">Textbooks</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Dorm Essentials">Dorm Essentials</option>
+              </select>
+              <button onClick={applyAdvancedFilters} className="btn-primary" style={{ padding: '8px 20px', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }} disabled={isSearching}>
+                {isSearching ? '⏳ Searching...' : '🔍 Search'}
+              </button>
+              <button onClick={() => setShowFilters(!showFilters)} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid #b185ff', color: '#b185ff', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                {showFilters ? 'Hide Filters ⬆️' : 'Advanced Filters ⚙️'}
+              </button>
+            </div>
+            
+            {showFilters && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #444', flexWrap: 'wrap' }}>
+                <span style={{ color: '#a0a0b0', fontWeight: 'bold', fontSize: '0.9rem' }}>Price Range:</span>
+                <input type="number" placeholder="Min ₹" className="form-input" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} style={{ margin: 0, width: '90px', padding: '6px' }} />
+                <span style={{ color: '#a0a0b0' }}>-</span>
+                <input type="number" placeholder="Max ₹" className="form-input" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} style={{ margin: 0, width: '90px', padding: '6px' }} />
+                <span style={{ color: '#a0a0b0', fontWeight: 'bold', fontSize: '0.9rem', marginLeft: '15px' }}>Sort By:</span>
+                <select className="form-input" value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ margin: 0, width: '150px', padding: '6px' }}>
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="price_low">Price: Low to High</option>
+                  <option value="price_high">Price: High to Low</option>
+                </select>
+              </motion.div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+            <button onClick={() => setViewMode('All')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'All' ? '#b185ff' : '#2b2b36', color: 'white' }}>All Results</button>
+            
+            {user && (
+              <>
+                <button onClick={() => setViewMode('Mine')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'Mine' ? '#b185ff' : '#2b2b36', color: 'white' }}>My Items</button>
+                <button onClick={() => setViewMode('Wishlist')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'Wishlist' ? '#ff6b6b' : '#2b2b36', color: 'white' }}>❤️ Wishlist</button>
+              </>
+            )}
+          </div>
+
+          <div className="listings-grid">
+            {finalDisplayListings.length === 0 ? (
+              <div style={{ padding: '40px', textAlign: 'center', background: '#2b2b36', borderRadius: '8px', width: '100%', gridColumn: '1 / -1' }}>
+                <h3 style={{ color: '#a0a0b0' }}>No items found</h3>
+                <p style={{ color: 'var(--text)', fontSize: '0.9rem' }}>Try adjusting your filters or search terms.</p>
+              </div>
+            ) : (
+              finalDisplayListings.map((item, index) => {
+                 const isFavorited = favorites.includes(item.id);
+                 return (
+                 <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: index * 0.1 }} className="item-card" style={{ opacity: item.status === 'sold' ? 0.6 : 1, position: 'relative' }}>
+                   
+                   <button onClick={() => handleToggleFavorite(item.id)} style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', padding: '8px', cursor: 'pointer', zIndex: 10, fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                     {isFavorited ? '❤️' : '🤍'}
+                   </button>
+                   
+                   {item.status === 'sold' && (
+                     <div style={{ position: 'absolute', top: '10px', right: '10px', background: '#ff6b6b', color: 'white', padding: '5px 10px', borderRadius: '4px', fontWeight: 'bold', zIndex: 10 }}>SOLD</div>
+                   )}
+ 
+                   {item.imageUrl ? (
+                     <img 
+                       src={`https://student-marketplace-ho49.onrender.com${item.imageUrl}`} 
+                       alt={item.title} 
+                       onClick={() => setSelectedImage(item.imageUrl)}
+                       style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', marginBottom: '15px', cursor: 'zoom-in' }} 
+                     />
+                   ) : (
+                     <div className="item-image-empty">No Image</div>
+                   )}
+ 
+                   <h4 style={{ margin: '10px 0', color: 'var(--text-h)', textDecoration: item.status === 'sold' ? 'line-through' : 'none' }}>{item.title}</h4>
+                   <p className="item-price">₹{item.price}</p>
+                   <span className="item-badge">{item.category}</span>
+                   
+                   <p style={{ fontSize: '0.75rem', color: 'var(--text)', marginTop: '10px' }}>
+                     Seller: {user ? item.seller_email : 'Log in to view'}
+                   </p>
+ 
+                   {user && user.email === item.seller_email && (
+                     <div style={{ display: 'flex', gap: '8px', marginTop: '15px' }}>
+                       {item.status !== 'sold' && <button onClick={() => handleMarkSold(item.id)} style={{ flex: 1, padding: '8px', background: '#51cf66', color: '#1e1e24', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>Mark Sold</button>}
+                       <button onClick={() => handleDelete(item.id)} className="btn-danger" style={{ flex: 1, padding: '8px', fontSize: '0.8rem' }}>Delete</button>
+                     </div>
+                   )}
+ 
+                   {(!user || (user && user.email !== item.seller_email)) && item.status !== 'sold' && (
+                     <div style={{ marginTop: '15px', borderTop: '1px solid #333', paddingTop: '10px' }}>
+                       <p style={{ fontSize: '0.8rem', color: '#a0a0b0', marginBottom: '10px', textAlign: 'center' }}>
+                         📞 <strong>{user ? (item.seller_phone || '919876543210') : '🔒 Hidden'}</strong>
+                       </p>
+                       <div style={{ display: 'flex', gap: '8px' }}>
+                         <button onClick={() => handleWhatsAppContact(item.seller_phone || '919876543210', item.title)} style={{ flex: 1, padding: '8px', background: '#25D366', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>💬 WhatsApp</button>
+                         <button onClick={() => handleEmailContact(item.seller_email, item.title)} style={{ flex: 1, padding: '8px', background: '#b185ff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>✉️ Email</button>
+                       </div>
+                     </div>
+                   )}
+                 </motion.div>
+                 );
+               })
+            )}
+          </div>
+        </div>
+
+        {/* 2. POST ITEM / SELL PROMPT GOES AT THE BOTTOM NOW */}
         {user ? (
           <div className="create-listing-panel">
             <h3>Post an Item</h3>
@@ -255,119 +357,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="listings-panel">
-          <div style={{ background: '#2b2b36', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <input type="text" className="form-input" placeholder="Search items..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ margin: 0, flex: 1 }} />
-              <select className="form-input" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={{ margin: 0, width: '150px' }}>
-                <option value="All">All Categories</option>
-                <option value="Textbooks">Textbooks</option>
-                <option value="Electronics">Electronics</option>
-                <option value="Dorm Essentials">Dorm Essentials</option>
-              </select>
-              <button onClick={applyAdvancedFilters} className="btn-primary" style={{ padding: '8px 20px', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }} disabled={isSearching}>
-                {isSearching ? '⏳ Searching...' : '🔍 Search'}
-              </button>
-              <button onClick={() => setShowFilters(!showFilters)} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid #b185ff', color: '#b185ff', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                {showFilters ? 'Hide Filters ⬆️' : 'Advanced Filters ⚙️'}
-              </button>
-            </div>
-            {showFilters && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #444', flexWrap: 'wrap' }}>
-                <span style={{ color: '#a0a0b0', fontWeight: 'bold', fontSize: '0.9rem' }}>Price Range:</span>
-                <input type="number" placeholder="Min ₹" className="form-input" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} style={{ margin: 0, width: '90px', padding: '6px' }} />
-                <span style={{ color: '#a0a0b0' }}>-</span>
-                <input type="number" placeholder="Max ₹" className="form-input" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} style={{ margin: 0, width: '90px', padding: '6px' }} />
-                <span style={{ color: '#a0a0b0', fontWeight: 'bold', fontSize: '0.9rem', marginLeft: '15px' }}>Sort By:</span>
-                <select className="form-input" value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ margin: 0, width: '150px', padding: '6px' }}>
-                  <option value="newest">Newest First</option>
-                  <option value="oldest">Oldest First</option>
-                  <option value="price_low">Price: Low to High</option>
-                  <option value="price_high">Price: High to Low</option>
-                </select>
-              </motion.div>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-            <button onClick={() => setViewMode('All')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'All' ? '#b185ff' : '#2b2b36', color: 'white' }}>All Results</button>
-            
-            {/* Only show Mine & Wishlist tabs if user is logged in! */}
-            {user && (
-              <>
-                <button onClick={() => setViewMode('Mine')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'Mine' ? '#b185ff' : '#2b2b36', color: 'white' }}>My Items</button>
-                <button onClick={() => setViewMode('Wishlist')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'Wishlist' ? '#ff6b6b' : '#2b2b36', color: 'white' }}>❤️ Wishlist</button>
-              </>
-            )}
-          </div>
-
-          <div className="listings-grid">
-            {finalDisplayListings.length === 0 ? (
-              <div style={{ padding: '40px', textAlign: 'center', background: '#2b2b36', borderRadius: '8px', width: '100%', gridColumn: '1 / -1' }}>
-                <h3 style={{ color: '#a0a0b0' }}>No items found</h3>
-                <p style={{ color: 'var(--text)', fontSize: '0.9rem' }}>Try adjusting your filters or search terms.</p>
-              </div>
-            ) : (
-              finalDisplayListings.map((item, index) => {
-                const isFavorited = favorites.includes(item.id);
-                return (
-                <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: index * 0.1 }} className="item-card" style={{ opacity: item.status === 'sold' ? 0.6 : 1, position: 'relative' }}>
-                  
-                  <button onClick={() => handleToggleFavorite(item.id)} style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', padding: '8px', cursor: 'pointer', zIndex: 10, fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {isFavorited ? '❤️' : '🤍'}
-                  </button>
-                  
-                  {item.status === 'sold' && (
-                    <div style={{ position: 'absolute', top: '10px', right: '10px', background: '#ff6b6b', color: 'white', padding: '5px 10px', borderRadius: '4px', fontWeight: 'bold', zIndex: 10 }}>SOLD</div>
-                  )}
-
-                  {item.imageUrl ? (
-                    <img 
-                      src={`https://student-marketplace-ho49.onrender.com${item.imageUrl}`} 
-                      alt={item.title} 
-                      onClick={() => setSelectedImage(item.imageUrl)}
-                      style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', marginBottom: '15px', cursor: 'zoom-in' }} 
-                    />
-                  ) : (
-                    <div className="item-image-empty">No Image</div>
-                  )}
-
-                  <h4 style={{ margin: '10px 0', color: 'var(--text-h)', textDecoration: item.status === 'sold' ? 'line-through' : 'none' }}>{item.title}</h4>
-                  <p className="item-price">₹{item.price}</p>
-                  <span className="item-badge">{item.category}</span>
-                  
-                  {/* Hide Seller Email from Guests to prevent scraping */}
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text)', marginTop: '10px' }}>
-                    Seller: {user ? item.seller_email : 'Log in to view'}
-                  </p>
-
-                  {user && user.email === item.seller_email && (
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '15px' }}>
-                      {item.status !== 'sold' && <button onClick={() => handleMarkSold(item.id)} style={{ flex: 1, padding: '8px', background: '#51cf66', color: '#1e1e24', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>Mark Sold</button>}
-                      <button onClick={() => handleDelete(item.id)} className="btn-danger" style={{ flex: 1, padding: '8px', fontSize: '0.8rem' }}>Delete</button>
-                    </div>
-                  )}
-
-                  {(!user || (user && user.email !== item.seller_email)) && item.status !== 'sold' && (
-                    <div style={{ marginTop: '15px', borderTop: '1px solid #333', paddingTop: '10px' }}>
-                      
-                      {/* Hide Phone Number from Guests */}
-                      <p style={{ fontSize: '0.8rem', color: '#a0a0b0', marginBottom: '10px', textAlign: 'center' }}>
-                        📞 <strong>{user ? (item.seller_phone || '919876543210') : '🔒 Hidden'}</strong>
-                      </p>
-                      
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button onClick={() => handleWhatsAppContact(item.seller_phone || '919876543210', item.title)} style={{ flex: 1, padding: '8px', background: '#25D366', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>💬 WhatsApp</button>
-                        <button onClick={() => handleEmailContact(item.seller_email, item.title)} style={{ flex: 1, padding: '8px', background: '#b185ff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>✉️ Email</button>
-                      </div>
-                    </div>
-                  )}
-                </motion.div>
-                );
-              })
-            )}
-          </div>
-        </div>
       </div>
 
       <AnimatePresence>
@@ -397,7 +386,6 @@ export default function Dashboard() {
           </motion.div>
         )}
       </AnimatePresence>
-
     </motion.div>
   );
 }
