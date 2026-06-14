@@ -6,10 +6,11 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import sequelize from './database';
+import { Op } from 'sequelize'; // <-- Imported SQL Operators
 import User from './models/User';
 import Category from './models/Category';
 import Listing from './models/Listing'; 
-import Favorite from './models/Favorite'; // <-- NEW IMPORT
+import Favorite from './models/Favorite'; 
 import authRoutes from './routes/auth';
 import { authenticateToken, AuthRequest } from './middleware/authMiddleware';
 
@@ -44,17 +45,52 @@ app.get('/api/dashboard-data', authenticateToken, (req: AuthRequest, res) => {
   res.json({ message: 'VIP Area', userThatRequestedThis: req.user });
 });
 
-// GET: Fetch all listings
+// --- UPGRADED ROUTE: Fetch listings with Advanced Search & Filters ---
 app.get('/api/listings', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const allListings = await Listing.findAll({ order: [['createdAt', 'DESC']] });
+    // 1. Catch the query parameters sent by the frontend
+    const { search, category, minPrice, maxPrice, sortBy } = req.query;
+
+    let whereClause: any = {};
+
+    // 2. Search by Title (Case-Insensitive)
+    if (search) {
+      whereClause.title = { [Op.iLike]: `%${search}%` }; 
+    }
+
+    // 3. Filter by Category
+    if (category && category !== 'All') {
+      whereClause.category = category;
+    }
+
+    // 4. Filter by Price Range
+    if (minPrice || maxPrice) {
+      whereClause.price = {};
+      if (minPrice) whereClause.price[Op.gte] = Number(minPrice); // Greater Than or Equal
+      if (maxPrice) whereClause.price[Op.lte] = Number(maxPrice); // Less Than or Equal
+    }
+
+    // 5. Sorting Logic
+    let orderClause: any = [['createdAt', 'DESC']]; // Default: Newest first
+    if (sortBy === 'price_low') orderClause = [['price', 'ASC']];
+    if (sortBy === 'price_high') orderClause = [['price', 'DESC']];
+    if (sortBy === 'oldest') orderClause = [['createdAt', 'ASC']];
+
+    // 6. Ask Neon Database to do the heavy lifting!
+    const allListings = await Listing.findAll({
+      where: whereClause,
+      order: orderClause
+    });
+
     res.json(allListings);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Server error fetching listings' });
   }
 });
+// ---------------------------------------------------------------------
 
-// --- NEW ROUTE: Fetch ONLY the logged-in user's listings for their Profile ---
+// --- ROUTE: Fetch ONLY the logged-in user's listings for their Profile ---
 app.get('/api/profile/listings', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const userEmail = req.user?.email;
@@ -197,7 +233,7 @@ app.put('/api/listings/:id/price', authenticateToken, async (req: AuthRequest, r
 });
 // ----------------------------------------------
 
-// --- NEW WISHLIST / FAVORITES ROUTES ---
+// --- WISHLIST / FAVORITES ROUTES ---
 
 // 1. POST: Add an item to the user's wishlist
 app.post('/api/favorites', authenticateToken, async (req: AuthRequest, res) => {

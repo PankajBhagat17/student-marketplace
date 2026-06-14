@@ -7,16 +7,16 @@ import { motion } from 'framer-motion';
 export default function Dashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
-  const [error, setError] = useState('');
   const [listings, setListings] = useState<any[]>([]);
-  
-  // --- NEW: Favorites State ---
   const [favorites, setFavorites] = useState<number[]>([]);
 
+  // --- NEW: Advanced Search State ---
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [sortBy, setSortBy] = useState('newest');
   
-  // --- NEW: Added 'Wishlist' to view modes ---
   const [viewMode, setViewMode] = useState<'All' | 'Mine' | 'Wishlist'>('All');
 
   const [newTitle, setNewTitle] = useState('');
@@ -24,6 +24,7 @@ export default function Dashboard() {
   const [newPostCategory, setNewPostCategory] = useState('Textbooks');
   const [imageFile, setImageFile] = useState<File | null>(null);
 
+  // 1. Fetch initial data on load
   useEffect(() => {
     const fetchDashboardData = async () => {
       const token = localStorage.getItem('token');
@@ -32,19 +33,45 @@ export default function Dashboard() {
         const userRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/dashboard-data', { headers: { Authorization: `Bearer ${token}` } });
         setUser(userRes.data.userThatRequestedThis);
         
+        // Fetch initial feed (newest items)
         const listingsRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/listings', { headers: { Authorization: `Bearer ${token}` } });
         setListings(listingsRes.data);
 
-        // --- NEW: Fetch user's saved favorites on load ---
         const favRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/favorites', { headers: { Authorization: `Bearer ${token}` } });
         setFavorites(favRes.data.favoriteIds || []);
-      } catch (err) {
+      } catch (err: any) {
+        console.error("DASHBOARD CRASH:", err);
         localStorage.removeItem('token');
         navigate('/login');
       }
     };
     fetchDashboardData();
   }, [navigate]);
+
+  // --- NEW: The Magic Search Engine Function ---
+  const applyAdvancedFilters = async () => {
+    const token = localStorage.getItem('token');
+    try {
+      // Build the dynamic URL query based on what the user typed
+      const query = new URLSearchParams();
+      if (searchTerm) query.append('search', searchTerm);
+      if (filterCategory !== 'All') query.append('category', filterCategory);
+      if (minPrice) query.append('minPrice', minPrice);
+      if (maxPrice) query.append('maxPrice', maxPrice);
+      if (sortBy) query.append('sortBy', sortBy);
+
+      // Ask the backend to do the heavy lifting!
+      const res = await axios.get(`https://student-marketplace-ho49.onrender.com/api/listings?${query.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      // Update the screen with the perfectly filtered results
+      setListings(res.data);
+    } catch (err) {
+      alert("Failed to apply filters. Is the server running?");
+    }
+  };
+  // ---------------------------------------------
 
   const handleCreateListing = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,18 +114,14 @@ export default function Dashboard() {
     }
   };
 
-  // --- NEW: Toggle Favorite Logic ---
   const handleToggleFavorite = async (listingId: number) => {
     const token = localStorage.getItem('token');
     const isFavorited = favorites.includes(listingId);
-    
     try {
       if (isFavorited) {
-        // If already favorited, remove it
         await axios.delete(`https://student-marketplace-ho49.onrender.com/api/favorites/${listingId}`, { headers: { Authorization: `Bearer ${token}` } });
         setFavorites(favorites.filter(id => id !== listingId));
       } else {
-        // If not favorited, add it
         await axios.post(`https://student-marketplace-ho49.onrender.com/api/favorites`, { listing_id: listingId }, { headers: { Authorization: `Bearer ${token}` } });
         setFavorites([...favorites, listingId]);
       }
@@ -123,17 +146,11 @@ export default function Dashboard() {
     window.location.href = `mailto:${sellerEmail}?subject=${subject}&body=${body}`;
   };
 
-  // --- UPDATED: The Magic Filter Logic ---
-  const filteredListings = listings.filter(item => {
-    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = filterCategory === 'All' || item.category === filterCategory;
-    
-    const matchesViewMode = 
-      viewMode === 'All' || 
-      (viewMode === 'Mine' && user && item.seller_email === user.email) ||
-      (viewMode === 'Wishlist' && favorites.includes(item.id)); // Only show items whose ID is in the favorites array
-
-    return matchesSearch && matchesCategory && matchesViewMode;
+  // We only keep the View Mode (Mine/Wishlist) filter here on the frontend!
+  const finalDisplayListings = listings.filter(item => {
+    if (viewMode === 'Mine') return user && item.seller_email === user.email;
+    if (viewMode === 'Wishlist') return favorites.includes(item.id);
+    return true; // viewMode === 'All'
   });
 
   return (
@@ -171,22 +188,11 @@ export default function Dashboard() {
         </div>
 
         <div className="listings-panel">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          
+          {/* --- NEW: Advanced Filter UI Block --- */}
+          <div style={{ background: '#2b2b36', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
             
-            {/* UPDATED: Added Wishlist Toggle */}
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setViewMode('All')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'All' ? '#b185ff' : '#2b2b36', color: 'white' }}>
-                All Items
-              </button>
-              <button onClick={() => setViewMode('Mine')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'Mine' ? '#b185ff' : '#2b2b36', color: 'white' }}>
-                My Items
-              </button>
-              <button onClick={() => setViewMode('Wishlist')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'Wishlist' ? '#ff6b6b' : '#2b2b36', color: 'white' }}>
-                ❤️ Wishlist
-              </button>
-            </div>
-            
-            <div style={{ display: 'flex', gap: '10px', width: '50%' }}>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
               <input type="text" className="form-input" placeholder="Search items..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ margin: 0, flex: 1 }} />
               <select className="form-input" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={{ margin: 0, width: '150px' }}>
                 <option value="All">All Categories</option>
@@ -195,19 +201,51 @@ export default function Dashboard() {
                 <option value="Dorm Essentials">Dorm Essentials</option>
               </select>
             </div>
+
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ color: '#a0a0b0', fontWeight: 'bold', fontSize: '0.9rem' }}>Filters:</span>
+              <input type="number" placeholder="Min ₹" className="form-input" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} style={{ margin: 0, width: '90px', padding: '6px' }} />
+              <span style={{ color: '#a0a0b0' }}>-</span>
+              <input type="number" placeholder="Max ₹" className="form-input" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} style={{ margin: 0, width: '90px', padding: '6px' }} />
+              
+              <select className="form-input" value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ margin: 0, width: '150px', padding: '6px' }}>
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="price_low">Price: Low to High</option>
+                <option value="price_high">Price: High to Low</option>
+              </select>
+
+              <button onClick={applyAdvancedFilters} className="btn-primary" style={{ padding: '8px 20px', marginLeft: 'auto' }}>
+                🔍 Apply Search
+              </button>
+            </div>
+
+          </div>
+          {/* -------------------------------------- */}
+
+          {/* View Mode Toggle Buttons */}
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+            <button onClick={() => setViewMode('All')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'All' ? '#b185ff' : '#2b2b36', color: 'white' }}>
+              All Results
+            </button>
+            <button onClick={() => setViewMode('Mine')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'Mine' ? '#b185ff' : '#2b2b36', color: 'white' }}>
+              My Items
+            </button>
+            <button onClick={() => setViewMode('Wishlist')} style={{ padding: '8px 15px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'Wishlist' ? '#ff6b6b' : '#2b2b36', color: 'white' }}>
+              ❤️ Wishlist
+            </button>
           </div>
 
           <div className="listings-grid">
-            {filteredListings.length === 0 ? (
-              <p style={{ color: 'var(--text)' }}>No items found.</p>
+            {finalDisplayListings.length === 0 ? (
+              <p style={{ color: 'var(--text)' }}>No items found matching those filters.</p>
             ) : (
-              filteredListings.map((item, index) => {
+              finalDisplayListings.map((item, index) => {
                 const isFavorited = favorites.includes(item.id);
 
                 return (
                 <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: index * 0.1 }} className="item-card" style={{ opacity: item.status === 'sold' ? 0.6 : 1, position: 'relative' }}>
                   
-                  {/* --- NEW: Favorite Heart Button --- */}
                   <button 
                     onClick={() => handleToggleFavorite(item.id)}
                     style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', padding: '8px', cursor: 'pointer', zIndex: 10, fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
