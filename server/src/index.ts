@@ -39,12 +39,8 @@ const storage = new CloudinaryStorage({
   params: {
     folder: 'pccoe-marketplace', 
     allowed_formats: ['jpg', 'jpeg', 'png', 'webp'] 
-    // Removed 'heic' and transformations temporarily to ensure the Free Tier isn't blocking the image manipulation
   } as any
 });
-
-const upload = multer({ storage: storage });
-// --------------------------------
 
 const upload = multer({ storage: storage });
 // --------------------------------
@@ -102,7 +98,6 @@ app.post('/api/listings', authenticateToken, upload.single('image'), async (req:
     const currentUser: any = await User.findOne({ where: { email: seller_email } });
     const seller_phone = currentUser?.phone_number || null;
 
-    // Cloudinary automatically provides the secure, permanent URL in req.file.path
     const imageUrl = req.file ? req.file.path : null;
 
     const newListing = await Listing.create({
@@ -124,7 +119,6 @@ app.delete('/api/listings/:id', authenticateToken, async (req: AuthRequest, res)
     if (!listing) return res.status(404).json({ error: 'Listing not found' });
     if (listing.seller_email !== req.user?.email) return res.status(403).json({ error: 'Security alert' });
 
-    // Ensure we don't try to locally delete a Cloudinary 'http' URL
     if (listing.imageUrl && !listing.imageUrl.startsWith('http')) {
       const imagePath = path.join(__dirname, '..', listing.imageUrl);
       if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
@@ -208,6 +202,13 @@ app.use((err: any, req: any, res: any, next: any) => {
   res.status(500).json({ error: "Image upload failed. Check server logs." });
 });
 
+// 🚀 1. OPEN THE PORT IMMEDIATELY FOR RENDER
+const PORT = process.env.PORT || 5001;
+app.listen(PORT, () => {
+  console.log(`🚀 Server instantly running on port ${PORT}`);
+});
+
+// 📦 2. CONNECT TO THE DATABASE IN THE BACKGROUND
 sequelize.authenticate()
   .then(async () => {
     console.log('✅ Database connection has been established successfully.');
@@ -233,8 +234,5 @@ sequelize.authenticate()
       
       console.log('✅ Seed data injected successfully!');
     }
-
-    const PORT = process.env.PORT || 5001;
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   })
   .catch((error) => console.error('❌ Unable to connect to the database:', error));
