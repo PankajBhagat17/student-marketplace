@@ -23,6 +23,11 @@ app.use(cors());
 app.use(express.json());
 
 // --- CLOUDINARY CONFIGURATION ---
+console.log("🕵️ SERVER STARTUP: Running Cloudinary Polygraph Test...");
+console.log("1. Cloud Name:", process.env.CLOUDINARY_CLOUD_NAME);
+console.log("2. API Key starts with:", process.env.CLOUDINARY_API_KEY ? process.env.CLOUDINARY_API_KEY.substring(0, 4) + "..." : "UNDEFINED ❌");
+console.log("3. API Secret exists?", !!process.env.CLOUDINARY_API_SECRET);
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -33,10 +38,13 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'pccoe-marketplace', 
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'heic'],
-    transformation: [{ width: 800, height: 800, crop: 'limit', quality: 'auto' }] 
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'] 
+    // Removed 'heic' and transformations temporarily to ensure the Free Tier isn't blocking the image manipulation
   } as any
 });
+
+const upload = multer({ storage: storage });
+// --------------------------------
 
 const upload = multer({ storage: storage });
 // --------------------------------
