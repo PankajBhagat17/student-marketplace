@@ -375,6 +375,224 @@ code {
   border: 1px solid var(--accent-border);
 }
 
+/* --- AMAZON STYLE HEADER --- */
+.dashboard-wrapper {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.amz-header-container {
+  background-color: #232f3e; /* Amazon dark blue/gray */
+  color: white;
+  width: 100%;
+  padding-bottom: 5px;
+}
+
+.amz-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+}
+
+.amz-icon-btn {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.amz-brand {
+  margin: 0;
+  font-size: 1.4rem;
+  letter-spacing: -0.5px;
+  font-family: var(--heading);
+}
+
+.amz-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.amz-profile {
+  display: flex;
+  flex-direction: column;
+  color: white;
+  text-decoration: none;
+  line-height: 1.2;
+}
+
+.amz-text-small {
+  font-size: 0.75rem;
+  color: #ccc;
+}
+
+.amz-text-bold {
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.amz-cart {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 1.8rem;
+  position: relative;
+  cursor: pointer;
+}
+
+.amz-cart-count {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #febd69;
+  color: #111;
+  font-size: 0.8rem;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 50%;
+}
+
+.amz-search-row {
+  display: flex;
+  padding: 0 15px 10px 15px;
+}
+
+.amz-search-row input {
+  flex: 1;
+  padding: 10px 15px;
+  border: 1px solid #444; /* Adds a clean border */
+  border-radius: 6px 0 0 6px;
+  font-size: 1rem;
+  outline: none;
+  background-color: #2b2b36 !important; /* Dark background */
+  color: #ffffff !important; /* Crisp white typing text */
+}
+
+.amz-search-row input::placeholder {
+  color: #a0a0b0; /* Light grey placeholder text */
+}
+
+.amz-search-row button {
+  background-color: #febd69;
+  border: none;
+  padding: 0 20px;
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+  font-size: 1.2rem;
+}
+
+.amz-nav-row {
+  display: flex;
+  background-color: #37475a;
+  padding: 8px 15px;
+  gap: 15px;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none; /* Firefox */
+}
+.amz-nav-row::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+.amz-nav-row button {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.amz-nav-row button.active {
+  font-weight: bold;
+  border-bottom: 2px solid white;
+}
+
+.amz-location-row {
+  background-color: #232f3e;
+  color: #ccc;
+  font-size: 0.8rem;
+  padding: 8px 15px;
+  border-top: 1px solid #37475a;
+}
+
+/* --- AMAZON SLIDE-OUT SIDEBAR --- */
+.amz-sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 9998;
+}
+
+.amz-sidebar-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 80vw;
+  max-width: 320px;
+  height: 100vh;
+  background-color: #1e1e24; /* Matches your dark theme */
+  z-index: 9999;
+  box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+.amz-sidebar-header {
+  background-color: #232f3e;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+}
+
+.amz-sidebar-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.amz-sidebar-content {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.amz-sidebar-content h4 {
+  margin: 0 0 15px 0;
+  color: white;
+  font-size: 1.1rem;
+}
+
+.amz-sidebar-content button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: #a0a0b0;
+  font-size: 1rem;
+  padding: 10px 0;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.amz-sidebar-content button:hover {
+  color: #febd69;
+}
+
 /* ========================================= */
 /* --- 📱 MOBILE RESPONSIVE DESIGN RULES --- */
 /* ========================================= */

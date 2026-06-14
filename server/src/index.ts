@@ -13,6 +13,7 @@ import Category from './models/Category';
 import Listing from './models/Listing'; 
 import Favorite from './models/Favorite'; 
 import authRoutes from './routes/auth';
+import adminRoutes from './routes/admin';
 import { authenticateToken, AuthRequest } from './middleware/authMiddleware';
 
 const app = express();
@@ -31,6 +32,8 @@ const upload = multer({ storage: storage });
 app.use('/uploads', express.static(uploadDir));
 
 app.use('/api/auth', authRoutes);
+
+app.use('/api/admin', adminRoutes);
 
 app.get('/api/dashboard-data', authenticateToken, (req: AuthRequest, res) => {
   res.json({ message: 'VIP Area', userThatRequestedThis: req.user });
