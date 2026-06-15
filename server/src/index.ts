@@ -11,6 +11,7 @@ import User from './models/User';
 import Category from './models/Category';
 import Listing from './models/Listing'; 
 import Favorite from './models/Favorite'; 
+import Message from './models/Message';
 import authRoutes from './routes/auth';
 import adminRoutes from './routes/admin';
 import { authenticateToken, AuthRequest } from './middleware/authMiddleware';
