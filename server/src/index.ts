@@ -2,11 +2,6 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import multer from 'multer';
-import { v2 as cloudinary } from 'cloudinary';
-import { CloudinaryStorage } from 'multer-storage-cloudinary';
-import path from 'path';
-import fs from 'fs';
 import sequelize from './database';
 import { Op } from 'sequelize'; 
 import User from './models/User';
@@ -22,28 +17,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --- CLOUDINARY CONFIGURATION ---
-console.log("🕵️ SERVER STARTUP: Running Cloudinary Polygraph Test...");
-console.log("1. Cloud Name:", process.env.CLOUDINARY_CLOUD_NAME);
-console.log("2. API Key starts with:", process.env.CLOUDINARY_API_KEY ? process.env.CLOUDINARY_API_KEY.substring(0, 4) + "..." : "UNDEFINED ❌");
-console.log("3. API Secret exists?", !!process.env.CLOUDINARY_API_SECRET);
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
-
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'student-marketplace', 
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'] 
-  } as any
-});
-
-const upload = multer({ storage: storage });
-// --------------------------------
+// 🧹 CLOUDINARY AND MULTER HAVE BEEN COMPLETELY REMOVED FOR TESTING
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
@@ -89,25 +63,28 @@ app.get('/api/profile/listings', authenticateToken, async (req: AuthRequest, res
   }
 });
 
-// --- UPDATED POST ROUTE FOR CLOUDINARY ---
-app.post('/api/listings', authenticateToken, upload.single('image'), async (req: AuthRequest, res) => {
+// --- 🚧 THE STRIPPED-DOWN POST ROUTE ---
+app.post('/api/listings', authenticateToken, async (req: AuthRequest, res) => {
   try {
+    console.log("📥 RECEIVED FRONTEND DATA:", req.body);
+
     const { title, price, category } = req.body;
     const seller_email = req.user?.email || 'unknown@university.edu';
     
     const currentUser: any = await User.findOne({ where: { email: seller_email } });
     const seller_phone = currentUser?.phone_number || null;
 
-    const imageUrl = req.file ? req.file.path : null;
+    // 🛑 We are forcing a fake placeholder image instead of asking Cloudinary
+    const imageUrl = "https://via.placeholder.com/800?text=Cloudinary+Bypassed";
 
     const newListing = await Listing.create({
       title, price, category, seller_email, seller_phone, imageUrl
     });
 
+    console.log("✅ SAVED TO DATABASE SUCCESSFULLY!");
     res.status(201).json(newListing);
 } catch (err: any) {
-    console.error("🔥 ACTUAL UPLOAD ERROR:", err.message || err);
-    console.error("FULL DETAILS:", JSON.stringify(err, null, 2));
+    console.error("🔥 DATABASE ERROR:", err.message || err);
     res.status(500).json({ error: 'Server error creating listing' });
   }
 });
@@ -118,11 +95,6 @@ app.delete('/api/listings/:id', authenticateToken, async (req: AuthRequest, res)
     const listing: any = await Listing.findByPk(req.params.id);
     if (!listing) return res.status(404).json({ error: 'Listing not found' });
     if (listing.seller_email !== req.user?.email) return res.status(403).json({ error: 'Security alert' });
-
-    if (listing.imageUrl && !listing.imageUrl.startsWith('http')) {
-      const imagePath = path.join(__dirname, '..', listing.imageUrl);
-      if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-    }
 
     await listing.destroy();
     res.json({ message: 'Listing deleted successfully' });
@@ -199,7 +171,7 @@ app.get('/api/favorites', authenticateToken, async (req: AuthRequest, res) => {
 // --- ULTIMATE ERROR CATCHER ---
 app.use((err: any, req: any, res: any, next: any) => {
   console.error("🔥 FATAL MIDDLEWARE ERROR:", err);
-  res.status(500).json({ error: "Image upload failed. Check server logs." });
+  res.status(500).json({ error: "Server crashed. Check logs." });
 });
 
 // 🚀 1. OPEN THE PORT IMMEDIATELY FOR RENDER
@@ -214,25 +186,5 @@ sequelize.authenticate()
     console.log('✅ Database connection has been established successfully.');
     await sequelize.sync({ alter: true }); 
     console.log('📦 Database tables synced!');
-
-    const count = await Listing.count();
-    if (count === 0) {
-      console.log('🌱 Database is empty. Seeding realistic sample items...');
-      
-      await Listing.bulkCreate([
-        { title: "Casio fx-991EX Scientific Calculator", price: 800, category: "Electronics", seller_email: "alumni@pccoe.edu", seller_phone: "919876543210", status: "available" },
-        { title: "Data Structures & Algorithms by Karumanchi", price: 450, category: "Textbooks", seller_email: "senior@pccoe.edu", seller_phone: "919876543210", status: "available" },
-        { title: "FOUND: Blue PCCOE ID Card near Canteen", price: 0, category: "Lost & Found", seller_email: "helpful_student@pccoe.edu", seller_phone: "919876543210", status: "available" },
-        { title: "Will tutor Java & OOP Concepts (Per Hour)", price: 200, category: "Skills & Services", seller_email: "coder@pccoe.edu", seller_phone: "919876543210", status: "available" },
-        { title: "Pigeon Electric Kettle 1.5L", price: 400, category: "Dorm Essentials", seller_email: "hostel_guy@pccoe.edu", seller_phone: "919876543210", status: "available" },
-        { title: "Logitech B170 Wireless Mouse", price: 300, category: "Electronics", seller_email: "alumni@pccoe.edu", seller_phone: "919876543210", status: "available" },
-        { title: "LOST: Black Fastrack Watch in Library", price: 0, category: "Lost & Found", seller_email: "stressed_student@pccoe.edu", seller_phone: "919876543210", status: "available" },
-        { title: "Database System Concepts 7th Edition", price: 550, category: "Textbooks", seller_email: "cs_major@pccoe.edu", seller_phone: "919876543210", status: "available" },
-        { title: "Foldable Study Table for Bed", price: 250, category: "Dorm Essentials", seller_email: "hostel_guy@pccoe.edu", seller_phone: "919876543210", status: "sold" },
-        { title: "Resume Review & Tech Interview Prep", price: 0, category: "Skills & Services", seller_email: "senior@pccoe.edu", seller_phone: "919876543210", status: "available" }
-      ]);
-      
-      console.log('✅ Seed data injected successfully!');
-    }
   })
   .catch((error) => console.error('❌ Unable to connect to the database:', error));
