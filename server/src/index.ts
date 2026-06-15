@@ -37,7 +37,7 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'pccoe-marketplace', 
+    folder: 'student-marketplace', 
     allowed_formats: ['jpg', 'jpeg', 'png', 'webp'] 
   } as any
 });
