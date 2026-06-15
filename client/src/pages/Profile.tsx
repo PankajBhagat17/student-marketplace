@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
+import ChatBox from '../components/ChatBox'; // --- NEW: Imported your ChatBox!
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -10,9 +11,11 @@ export default function Profile() {
   const [myListings, setMyListings] = useState<any[]>([]);
   const [error, setError] = useState('');
 
-  // --- NEW: Edit Pricing State ---
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editPrice, setEditPrice] = useState<string>('');
+  
+  // --- NEW: Track which chat room the seller has open
+  const [activeChat, setActiveChat] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -53,7 +56,6 @@ export default function Profile() {
     }
   };
 
-  // --- NEW: Functions to handle editing ---
   const handleStartEdit = (id: number, currentPrice: number) => {
     setEditingId(id);
     setEditPrice(currentPrice.toString());
@@ -67,9 +69,8 @@ export default function Profile() {
         { newPrice: editPrice }, 
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      // Instantly update the UI with the new price from the server
       setMyListings(myListings.map(item => item.id === id ? response.data : item));
-      setEditingId(null); // Close the edit mode
+      setEditingId(null); 
     } catch (err) {
       alert("Failed to update price.");
     }
@@ -126,14 +127,13 @@ export default function Profile() {
                 <div style={{ position: 'absolute', top: '10px', right: '10px', background: '#ff6b6b', color: 'white', padding: '5px 10px', borderRadius: '4px', fontWeight: 'bold', zIndex: 10 }}>SOLD</div>
               )}
               {item.imageUrl ? (
-                <img src={`https://student-marketplace-ho49.onrender.com${item.imageUrl}`} alt={item.title} style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', marginBottom: '15px' }} />
+                <img src={item.imageUrl.startsWith('http') ? item.imageUrl : `https://student-marketplace-ho49.onrender.com${item.imageUrl}`} alt={item.title} style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', marginBottom: '15px' }} />
               ) : (
                 <div className="item-image-empty">No Image</div>
               )}
               
               <h4 style={{ margin: '10px 0', color: 'var(--text-h)' }}>{item.title}</h4>
               
-              {/* --- NEW: Inline Edit Price Logic --- */}
               {editingId === item.id ? (
                 <div style={{ display: 'flex', gap: '5px', alignItems: 'center', marginBottom: '10px' }}>
                   <span style={{ color: 'white' }}>₹</span>
@@ -149,7 +149,6 @@ export default function Profile() {
               ) : (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <p className="item-price" style={{ margin: '0' }}>₹{item.price}</p>
-                  {/* Show Edit Button only if item isn't sold */}
                   {item.status !== 'sold' && (
                     <button onClick={() => handleStartEdit(item.id, item.price)} style={{ padding: '4px 8px', background: 'transparent', color: '#b185ff', border: '1px solid #b185ff', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>
                       ✎ Edit Price
@@ -157,7 +156,28 @@ export default function Profile() {
                   )}
                 </div>
               )}
-              {/* -------------------------------------- */}
+
+              {/* --- NEW: The Live Chat Room Toggle for the Seller --- */}
+              {item.status !== 'sold' && (
+                <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px solid #333' }}>
+                  <button 
+                    onClick={() => setActiveChat(activeChat === item.id ? null : item.id)} 
+                    style={{ width: '100%', padding: '10px', background: activeChat === item.id ? '#444' : '#febd69', color: activeChat === item.id ? '#fff' : '#111', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                  >
+                    {activeChat === item.id ? 'Close Chat Room ✕' : '💬 Open Live Chat Room'}
+                  </button>
+                  
+                  {activeChat === item.id && user && (
+                    <div style={{ marginTop: '15px' }}>
+                      <ChatBox 
+                        listingId={item.id} 
+                        currentUserEmail={user.email} 
+                        sellerEmail={user.email} 
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div style={{ display: 'flex', gap: '8px', marginTop: '15px' }}>
                 {item.status !== 'sold' && (
