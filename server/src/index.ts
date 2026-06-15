@@ -20,10 +20,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --- 🧰 BRINGING BACK THE BOX CUTTER (MULTER + CLOUDINARY) ---
-// This tells Cloudinary to automatically use the CLOUDINARY_URL from your Render settings!
-cloudinary.config(true);
-
+// --- 🧰 CLOUDINARY STORAGE ---
+// Note: We don't need cloudinary.config() at all! 
+// The SDK automatically finds the CLOUDINARY_URL variable in your Render dashboard.
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
@@ -79,10 +78,10 @@ app.get('/api/profile/listings', authenticateToken, async (req: AuthRequest, res
   }
 });
 
-// --- 🚀 THE FINAL POST ROUTE WITH MULTER ENABLED ---
+// --- 🚀 THE POST ROUTE ---
 app.post('/api/listings', authenticateToken, upload.single('image'), async (req: AuthRequest, res) => {
   try {
-    console.log("📥 PARSED FRONTEND DATA:", req.body);
+    console.log("📥 PARSED FRONTEND DATA:", JSON.stringify(req.body, null, 2));
     
     const { title, price, category } = req.body;
     const seller_email = req.user?.email || 'unknown@university.edu';
@@ -90,7 +89,6 @@ app.post('/api/listings', authenticateToken, upload.single('image'), async (req:
     const currentUser: any = await User.findOne({ where: { email: seller_email } });
     const seller_phone = currentUser?.phone_number || null;
 
-    // Cloudinary automatically provides the secure URL in req.file.path
     const imageUrl = req.file ? req.file.path : null;
     console.log("📸 CLOUDINARY IMAGE URL:", imageUrl);
 
@@ -101,7 +99,7 @@ app.post('/api/listings', authenticateToken, upload.single('image'), async (req:
     console.log("✅ SAVED TO DATABASE SUCCESSFULLY!");
     res.status(201).json(newListing);
 } catch (err: any) {
-    console.error("🔥 ACTUAL UPLOAD ERROR:", err.message || err);
+    console.error("🔥 ROUTE ERROR:", err.message);
     res.status(500).json({ error: 'Server error creating listing' });
   }
 });
@@ -183,6 +181,14 @@ app.get('/api/favorites', authenticateToken, async (req: AuthRequest, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Server error fetching favorites' });
   }
+});
+
+// --- ULTIMATE ERROR CATCHER ---
+app.use((err: any, req: any, res: any, next: any) => {
+  // We use err.message and err.stack here so it NEVER prints [object Object] again
+  console.error("🔥 FATAL MIDDLEWARE ERROR:", err.message || err);
+  if (err.stack) console.error(err.stack);
+  res.status(500).json({ error: "Server crashed during upload." });
 });
 
 // 🚀 1. OPEN THE PORT IMMEDIATELY FOR RENDER
