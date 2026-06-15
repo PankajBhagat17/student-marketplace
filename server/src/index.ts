@@ -2,6 +2,9 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import multer from 'multer';
+import { v2 as cloudinary } from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import sequelize from './database';
 import { Op } from 'sequelize'; 
 import User from './models/User';
@@ -17,7 +20,20 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🧹 CLOUDINARY AND MULTER HAVE BEEN COMPLETELY REMOVED FOR TESTING
+// --- 🧰 BRINGING BACK THE BOX CUTTER (MULTER + CLOUDINARY) ---
+// This tells Cloudinary to automatically use the CLOUDINARY_URL from your Render settings!
+cloudinary.config(true);
+
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'student-marketplace', 
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'] 
+  } as any
+});
+
+const upload = multer({ storage: storage });
+// -----------------------------------------------------------
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
@@ -63,19 +79,20 @@ app.get('/api/profile/listings', authenticateToken, async (req: AuthRequest, res
   }
 });
 
-// --- 🚧 THE STRIPPED-DOWN POST ROUTE ---
-app.post('/api/listings', authenticateToken, async (req: AuthRequest, res) => {
+// --- 🚀 THE FINAL POST ROUTE WITH MULTER ENABLED ---
+app.post('/api/listings', authenticateToken, upload.single('image'), async (req: AuthRequest, res) => {
   try {
-    console.log("📥 RECEIVED FRONTEND DATA:", req.body);
-
+    console.log("📥 PARSED FRONTEND DATA:", req.body);
+    
     const { title, price, category } = req.body;
     const seller_email = req.user?.email || 'unknown@university.edu';
     
     const currentUser: any = await User.findOne({ where: { email: seller_email } });
     const seller_phone = currentUser?.phone_number || null;
 
-    // 🛑 We are forcing a fake placeholder image instead of asking Cloudinary
-    const imageUrl = "https://via.placeholder.com/800?text=Cloudinary+Bypassed";
+    // Cloudinary automatically provides the secure URL in req.file.path
+    const imageUrl = req.file ? req.file.path : null;
+    console.log("📸 CLOUDINARY IMAGE URL:", imageUrl);
 
     const newListing = await Listing.create({
       title, price, category, seller_email, seller_phone, imageUrl
@@ -84,7 +101,7 @@ app.post('/api/listings', authenticateToken, async (req: AuthRequest, res) => {
     console.log("✅ SAVED TO DATABASE SUCCESSFULLY!");
     res.status(201).json(newListing);
 } catch (err: any) {
-    console.error("🔥 DATABASE ERROR:", err.message || err);
+    console.error("🔥 ACTUAL UPLOAD ERROR:", err.message || err);
     res.status(500).json({ error: 'Server error creating listing' });
   }
 });
@@ -166,12 +183,6 @@ app.get('/api/favorites', authenticateToken, async (req: AuthRequest, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Server error fetching favorites' });
   }
-});
-
-// --- ULTIMATE ERROR CATCHER ---
-app.use((err: any, req: any, res: any, next: any) => {
-  console.error("🔥 FATAL MIDDLEWARE ERROR:", err);
-  res.status(500).json({ error: "Server crashed. Check logs." });
 });
 
 // 🚀 1. OPEN THE PORT IMMEDIATELY FOR RENDER
