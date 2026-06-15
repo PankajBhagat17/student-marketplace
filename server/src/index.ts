@@ -2,6 +2,8 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import http from 'http';
+import { Server } from 'socket.io';
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
@@ -21,9 +23,49 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// --- 🔌 SOCKET.IO SETUP ---
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*", // We will lock this down to your Vercel URL later for security
+    methods: ["GET", "POST"]
+  }
+});
+
+io.on('connection', (socket) => {
+  console.log(`🟢 User connected: ${socket.id}`);
+
+  // When a user opens a chat box, they join a specific "room" for that listing
+  socket.on('join_room', (room) => {
+    socket.join(room);
+    console.log(`🚪 User joined room: ${room}`);
+  });
+
+  // When a user clicks "Send"
+  socket.on('send_message', async (data) => {
+    try {
+      // 1. Save it to our new database model
+      const savedMessage = await Message.create({
+        listing_id: data.listing_id,
+        sender_email: data.sender_email,
+        receiver_email: data.receiver_email,
+        content: data.content
+      });
+
+      // 2. Instantly push it to the other person in the room
+      io.to(data.room).emit('receive_message', savedMessage);
+    } catch (err) {
+      console.error("🔥 Error saving message:", err);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`🔴 User disconnected: ${socket.id}`);
+  });
+});
+// ----------------------------
+
 // --- 🧰 CLOUDINARY STORAGE ---
-// Note: We don't need cloudinary.config() at all! 
-// The SDK automatically finds the CLOUDINARY_URL variable in your Render dashboard.
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
@@ -186,7 +228,6 @@ app.get('/api/favorites', authenticateToken, async (req: AuthRequest, res) => {
 
 // --- ULTIMATE ERROR CATCHER ---
 app.use((err: any, req: any, res: any, next: any) => {
-  // We use err.message and err.stack here so it NEVER prints [object Object] again
   console.error("🔥 FATAL MIDDLEWARE ERROR:", err.message || err);
   if (err.stack) console.error(err.stack);
   res.status(500).json({ error: "Server crashed during upload." });
@@ -194,7 +235,7 @@ app.use((err: any, req: any, res: any, next: any) => {
 
 // 🚀 1. OPEN THE PORT IMMEDIATELY FOR RENDER
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server instantly running on port ${PORT}`);
 });
 
