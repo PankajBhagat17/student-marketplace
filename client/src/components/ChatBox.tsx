@@ -36,10 +36,10 @@ const ChatBox = ({ listingId, currentUserEmail, sellerEmail }) => {
       };
 
       // 1. Send the message to the backend
+      // (We no longer manually add it to the screen here. We wait for the server to echo it back!)
       await socket.emit('send_message', messageData);
       
-      // 2. Add it to our own screen immediately
-      setMessageList((list) => [...list, messageData]);
+      // 2. Clear the input box
       setCurrentMessage('');
     }
   };
