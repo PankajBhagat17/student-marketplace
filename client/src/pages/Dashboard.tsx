@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast'; 
+import ChatBox from '../components/ChatBox'; // --- NEW: Imported your ChatBox!
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -16,7 +17,7 @@ export default function Dashboard() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [showSellForm, setShowSellForm] = useState(false); // --- NEW: Toggle for the sell form
+  const [showSellForm, setShowSellForm] = useState(false); 
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
@@ -30,6 +31,9 @@ export default function Dashboard() {
   const [newPrice, setNewPrice] = useState('');
   const [newPostCategory, setNewPostCategory] = useState('Textbooks');
   const [imageFile, setImageFile] = useState<File | null>(null);
+
+  // --- NEW: Tracks which item's chatbox is currently open
+  const [activeChat, setActiveChat] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -112,7 +116,7 @@ export default function Dashboard() {
       const fileInput = document.getElementById('image-upload') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
       
-      setShowSellForm(false); // --- NEW: Close the form automatically after success!
+      setShowSellForm(false); 
       
       toast.success('Item posted successfully!', { id: toastId }); 
     } catch (err) {
@@ -263,7 +267,6 @@ export default function Dashboard() {
             <button className={filterCategory === 'Lost & Found' ? 'active' : ''} onClick={() => setFilterCategory('Lost & Found')}>Lost & Found</button>
           </div>
           
-          {/* --- UPDATED BUTTON: Now acts as a toggle instead of an anchor link --- */}
           <button 
             onClick={() => { if(checkAuth()) setShowSellForm(!showSellForm); }} 
             style={{ background: '#febd69', color: '#111', padding: '6px 12px', borderRadius: '4px', border: 'none', fontWeight: 'bold', fontSize: '0.9rem', whiteSpace: 'nowrap', marginLeft: '10px', cursor: 'pointer' }}
@@ -275,7 +278,6 @@ export default function Dashboard() {
 
       <div className="dashboard-body" style={{ marginTop: '0' }}>
         
-        {/* --- NEW: The Slide-Down Form at the top of the page --- */}
         <AnimatePresence>
           {showSellForm && (
             <motion.div 
@@ -376,9 +378,36 @@ export default function Dashboard() {
                      </div>
                    )}
  
+                   {/* --- UPDATED: The Buyer Actions Section (WhatsApp + Live Chat) --- */}
                    {(!user || (user && user.email !== item.seller_email)) && item.status !== 'sold' && (
                      <div style={{ marginTop: '15px', borderTop: '1px solid #333', paddingTop: '10px' }}>
-                       <button onClick={() => handleWhatsAppContact(item.seller_phone || '919876543210', item.title)} style={{ width: '100%', padding: '10px', background: '#febd69', color: '#111', border: 'none', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}>Contact Seller</button>
+                       <div style={{ display: 'flex', gap: '10px' }}>
+                         <button 
+                           onClick={() => handleWhatsAppContact(item.seller_phone || '919876543210', item.title)} 
+                           style={{ flex: 1, padding: '10px', background: '#25D366', color: '#fff', border: 'none', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
+                         >
+                           WhatsApp
+                         </button>
+                         <button 
+                           onClick={() => {
+                             if(checkAuth()) setActiveChat(activeChat === item.id ? null : item.id);
+                           }} 
+                           style={{ flex: 1, padding: '10px', background: activeChat === item.id ? '#444' : '#febd69', color: activeChat === item.id ? '#fff' : '#111', border: 'none', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
+                         >
+                           {activeChat === item.id ? 'Close Chat ✕' : 'Live Chat 💬'}
+                         </button>
+                       </div>
+
+                       {/* --- NEW: The Hidden ChatBox that reveals when clicked --- */}
+                       {activeChat === item.id && user && (
+                         <div style={{ marginTop: '15px' }}>
+                           <ChatBox 
+                             listingId={item.id} 
+                             currentUserEmail={user.email} 
+                             sellerEmail={item.seller_email} 
+                           />
+                         </div>
+                       )}
                      </div>
                    )}
                  </motion.div>
