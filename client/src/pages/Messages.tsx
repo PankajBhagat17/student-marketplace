@@ -1,14 +1,13 @@
-import { useEffect, useState, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom'; // --- NEW: Added useLocation
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import axios from 'axios';
 
-// Connect to your live backend
 const socket = io('https://student-marketplace-ho49.onrender.com');
 
 export default function Messages() {
   const navigate = useNavigate();
-  const location = useLocation(); // --- NEW: To catch data from Dashboard
+  const location = useLocation();
   
   const [user, setUser] = useState<any>(null);
   const [conversations, setConversations] = useState<any[]>([]);
@@ -34,29 +33,50 @@ export default function Messages() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // --- NEW: Request Browser/Phone Push Notification Permission ---
   useEffect(() => {
-    const fetchInbox = async () => {
+    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // --- NEW: Extracted fetchInbox so we can call it globally when a message arrives ---
+  const fetchInbox = useCallback(async (currentUserEmail: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const inboxRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/messages/inbox', { headers: { Authorization: `Bearer ${token}` } });
+      setConversations(inboxRes.data);
+    } catch (err) {
+      console.error('Failed to load inbox');
+    }
+  }, []);
+
+  useEffect(() => {
+    const initializePage = async () => {
       const token = localStorage.getItem('token');
       if (!token) { navigate('/login'); return; }
       try {
         const userRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/dashboard-data', { headers: { Authorization: `Bearer ${token}` } });
-        setUser(userRes.data.userThatRequestedThis);
+        const loggedInUser = userRes.data.userThatRequestedThis;
+        setUser(loggedInUser);
         
-        const inboxRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/messages/inbox', { headers: { Authorization: `Bearer ${token}` } });
-        setConversations(inboxRes.data);
+        // 1. Join Global Channel for Push Notifications
+        socket.emit('setup_user', loggedInUser.email);
 
-        // --- NEW: Magic Logic to open a blank chat if coming from Dashboard ---
+        // 2. Load the Sidebar
+        await fetchInbox(loggedInUser.email);
+
+        // 3. Handle Teleporting from Dashboard
         if (location.state && location.state.newChat) {
           const item = location.state.newChat;
-          
-          // Check if you already have history with this item
+          const inboxRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/messages/inbox', { headers: { Authorization: `Bearer ${token}` } });
           const existingChat = inboxRes.data.find((c: any) => c.listing_id === item.id && c.other_person_email === item.seller_email);
           
           if (existingChat) {
             setActiveChat(existingChat);
             setMessageList(existingChat.past_messages || []);
           } else {
-            // No history? Create a brand new blank chat window!
             setActiveChat({
               listing_id: item.id,
               listing_title: item.title,
@@ -66,16 +86,35 @@ export default function Messages() {
             });
             setMessageList([]);
           }
-          // Clear the "newChat" memory so it doesn't accidentally reopen if you refresh the page
           window.history.replaceState({}, document.title);
         }
-
       } catch (err) {
-        console.error('Failed to load inbox');
+        console.error('Failed to initialize user data');
       }
     };
-    fetchInbox();
-  }, [navigate, location.state]);
+    initializePage();
+  }, [navigate, location.state, fetchInbox]);
+
+  // --- NEW: Global Notification Listener ---
+  useEffect(() => {
+    if (!user) return;
+
+    const handleGlobalNotification = (newMsg: any) => {
+      // 1. Trigger Phone/Browser Push Notification
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(`New message from ${newMsg.sender_email.split('@')[0]}`, {
+          body: newMsg.content,
+          icon: '/favicon.ico'
+        });
+      }
+
+      // 2. Instantly refresh the sidebar so the new message pops to the top
+      fetchInbox(user.email);
+    };
+
+    socket.on('global_notification', handleGlobalNotification);
+    return () => { socket.off('global_notification', handleGlobalNotification); };
+  }, [user, fetchInbox]);
 
   useEffect(() => {
     if (!activeChat || !user) return;
@@ -99,10 +138,12 @@ export default function Messages() {
 
     const handleMessageEdited = (editedMsg: any) => {
       setMessageList((list) => list.map(msg => msg.id === editedMsg.id ? editedMsg : msg));
+      fetchInbox(user.email); // Refresh sidebar snippet
     };
 
     const handleMessageDeleted = (data: any) => {
       setMessageList((list) => list.filter(msg => msg.id !== data.message_id));
+      fetchInbox(user.email); // Refresh sidebar snippet
     };
 
     socket.on('receive_message', handleReceiveMessage);
@@ -116,7 +157,7 @@ export default function Messages() {
       socket.off('message_edited', handleMessageEdited);
       socket.off('message_deleted', handleMessageDeleted);
     };
-  }, [activeChat, user]);
+  }, [activeChat, user, fetchInbox]);
 
   const sendMessage = async () => {
     if (currentMessage.trim() === '' || !activeChat || !user) return;
@@ -140,6 +181,8 @@ export default function Messages() {
       });
     }
     setCurrentMessage('');
+    // Ensure sender's sidebar updates immediately
+    setTimeout(() => fetchInbox(user.email), 100); 
   };
 
   const deleteMessage = (id: number) => {

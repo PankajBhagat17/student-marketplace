@@ -35,6 +35,12 @@ const io = new Server(server, {
 io.on('connection', (socket) => {
   console.log(`🟢 User connected: ${socket.id}`);
 
+  // --- NEW: Global User Channel for Sidebar & Notifications ---
+  socket.on('setup_user', (email) => {
+    socket.join(email);
+    console.log(`📡 User ${email} connected to global inbox.`);
+  });
+
   socket.on('join_room', (room) => {
     socket.join(room);
     console.log(`🚪 User joined room: ${room}`);
@@ -48,13 +54,19 @@ io.on('connection', (socket) => {
         receiver_email: data.receiver_email,
         content: data.content
       });
+      
+      // 1. Send to the active chat room
       io.to(data.room).emit('receive_message', savedMessage);
+      
+      // 2. Send global notification to the receiver's phone/sidebar
+      socket.to(data.receiver_email).emit('global_notification', savedMessage);
+      
     } catch (err) {
       console.error("🔥 Error saving message:", err);
     }
   });
 
-  // --- NEW: Handle Read Receipts ---
+  // --- Handle Read Receipts ---
   socket.on('mark_read', async (data) => {
     try {
       await Message.update(
@@ -68,7 +80,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // --- NEW: Handle Message Editing ---
+  // --- Handle Message Editing ---
   socket.on('edit_message', async (data) => {
     try {
       const messageToEdit: any = await Message.findByPk(data.message_id);
@@ -86,7 +98,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // --- NEW: Handle Message Deletion ---
+  // --- Handle Message Deletion ---
   socket.on('delete_message', async (data) => {
     try {
       const messageToDelete: any = await Message.findByPk(data.message_id);
@@ -336,6 +348,7 @@ server.listen(PORT, () => {
 sequelize.authenticate()
   .then(async () => {
     console.log('✅ Database connection has been established successfully.');
-await sequelize.sync({ alter: true }); // WARNING: THIS WILL DELETE ALL EXISTING DATA    console.log('📦 Database tables synced!');
+    await sequelize.sync({ alter: true }); 
+    console.log('📦 Database tables synced!');
   })
   .catch((error) => console.error('❌ Unable to connect to the database:', error));
