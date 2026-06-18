@@ -8,6 +8,11 @@ class Message extends Model {
   public sender_email!: string;
   public receiver_email!: string;
   public content!: string;
+  
+  // --- NEW TYPESCRIPT DEFINITIONS ---
+  public is_read!: boolean;
+  public is_edited!: boolean;
+  
   public readonly createdAt!: Date;
 }
 
@@ -32,6 +37,15 @@ Message.init({
   content: {
     type: DataTypes.TEXT,
     allowNull: false,
+  },
+  // --- NEW DATABASE COLUMNS ---
+  is_read: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  is_edited: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
   }
 }, {
   sequelize,

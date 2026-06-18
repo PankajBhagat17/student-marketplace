@@ -35,27 +35,69 @@ const io = new Server(server, {
 io.on('connection', (socket) => {
   console.log(`🟢 User connected: ${socket.id}`);
 
-  // When a user opens a chat box, they join a specific "room" for that listing
   socket.on('join_room', (room) => {
     socket.join(room);
     console.log(`🚪 User joined room: ${room}`);
   });
 
-  // When a user clicks "Send"
   socket.on('send_message', async (data) => {
     try {
-      // 1. Save it to our new database model
       const savedMessage = await Message.create({
         listing_id: data.listing_id,
         sender_email: data.sender_email,
         receiver_email: data.receiver_email,
         content: data.content
       });
-
-      // 2. Instantly push it to the other person in the room
       io.to(data.room).emit('receive_message', savedMessage);
     } catch (err) {
       console.error("🔥 Error saving message:", err);
+    }
+  });
+
+  // --- NEW: Handle Read Receipts ---
+  socket.on('mark_read', async (data) => {
+    try {
+      await Message.update(
+        { is_read: true },
+        { where: { room: data.room, receiver_email: data.user_email, is_read: false } }
+      );
+      // Tell everyone in the room that messages were read
+      io.to(data.room).emit('messages_read', { user_email: data.user_email });
+    } catch (err) {
+      console.error("🔥 Error marking read:", err);
+    }
+  });
+
+  // --- NEW: Handle Message Editing ---
+  socket.on('edit_message', async (data) => {
+    try {
+      const messageToEdit: any = await Message.findByPk(data.message_id);
+      
+      // Security Check: Only the sender can edit, and ONLY if it hasn't been read
+      if (messageToEdit && messageToEdit.sender_email === data.sender_email && !messageToEdit.is_read) {
+        messageToEdit.content = data.new_content;
+        messageToEdit.is_edited = true;
+        await messageToEdit.save();
+        
+        io.to(data.room).emit('message_edited', messageToEdit);
+      }
+    } catch (err) {
+      console.error("🔥 Error editing message:", err);
+    }
+  });
+
+  // --- NEW: Handle Message Deletion ---
+  socket.on('delete_message', async (data) => {
+    try {
+      const messageToDelete: any = await Message.findByPk(data.message_id);
+      
+      // Security Check: Only the sender can delete
+      if (messageToDelete && messageToDelete.sender_email === data.sender_email) {
+        await messageToDelete.destroy();
+        io.to(data.room).emit('message_deleted', { message_id: data.message_id });
+      }
+    } catch (err) {
+      console.error("🔥 Error deleting message:", err);
     }
   });
 
@@ -294,7 +336,6 @@ server.listen(PORT, () => {
 sequelize.authenticate()
   .then(async () => {
     console.log('✅ Database connection has been established successfully.');
-    await sequelize.sync({ alter: true }); 
-    console.log('📦 Database tables synced!');
+await sequelize.sync({ force: true }); // WARNING: THIS WILL DELETE ALL EXISTING DATA    console.log('📦 Database tables synced!');
   })
   .catch((error) => console.error('❌ Unable to connect to the database:', error));
