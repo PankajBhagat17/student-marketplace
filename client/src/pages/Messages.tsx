@@ -39,11 +39,15 @@ export default function Messages() {
     }
   }, []);
 
+  // --- FIX 1: CACHE BUSTING ---
+  // Added `?t=${new Date().getTime()}` to the URL so mobile browsers NEVER cache this request
   const fetchInbox = useCallback(async (currentUserEmail: string) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-      const inboxRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/messages/inbox', { headers: { Authorization: `Bearer ${token}` } });
+      const inboxRes = await axios.get(`https://student-marketplace-ho49.onrender.com/api/messages/inbox?t=${new Date().getTime()}`, { 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
       setConversations(inboxRes.data);
     } catch (err) {
       console.error('Failed to load inbox');
@@ -64,7 +68,7 @@ export default function Messages() {
 
         if (location.state && location.state.newChat) {
           const item = location.state.newChat;
-          const inboxRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/messages/inbox', { headers: { Authorization: `Bearer ${token}` } });
+          const inboxRes = await axios.get(`https://student-marketplace-ho49.onrender.com/api/messages/inbox?t=${new Date().getTime()}`, { headers: { Authorization: `Bearer ${token}` } });
           const existingChat = inboxRes.data.find((c: any) => c.listing_id === item.id && c.other_person_email === item.seller_email);
           
           if (existingChat) {
@@ -89,24 +93,18 @@ export default function Messages() {
     initializePage();
   }, [navigate, location.state, fetchInbox]);
 
-  // --- NEW: Mobile Wake-Up & Reconnect Logic ---
+  // Mobile Wake-Up & Reconnect Logic
   useEffect(() => {
     if (!user) return;
-
-    // 1. Listen for the phone waking up or switching back to the tab
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log("📱 Mobile Tab woke up! Refreshing data...");
         fetchInbox(user.email);
-        // Force socket to re-register the user to the global channel just in case it dropped
         socket.emit('setup_user', user.email);
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // 2. Listen for Socket.io natively re-establishing a dropped connection
     const handleSocketReconnect = () => {
-      console.log("🔌 Socket reconnected! Refreshing data...");
       fetchInbox(user.email);
       socket.emit('setup_user', user.email);
     };
@@ -117,11 +115,22 @@ export default function Messages() {
       socket.off('connect', handleSocketReconnect);
     };
   }, [user, fetchInbox]);
-  // ---------------------------------------------
 
+  // --- FIX 2: FALLBACK POLLING (The WhatsApp Web Method) ---
+  // Silently checks for new messages every 10 seconds just in case the mobile socket died
   useEffect(() => {
     if (!user) return;
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchInbox(user.email);
+      }
+    }, 10000); 
+    return () => clearInterval(interval);
+  }, [user, fetchInbox]);
 
+  // Global Notification Listener
+  useEffect(() => {
+    if (!user) return;
     const handleGlobalNotification = (newMsg: any) => {
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification(`New message from ${newMsg.sender_email.split('@')[0]}`, {
@@ -131,7 +140,6 @@ export default function Messages() {
       }
       fetchInbox(user.email);
     };
-
     socket.on('global_notification', handleGlobalNotification);
     return () => { socket.off('global_notification', handleGlobalNotification); };
   }, [user, fetchInbox]);
