@@ -33,14 +33,12 @@ export default function Messages() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // --- NEW: Request Browser/Phone Push Notification Permission ---
   useEffect(() => {
     if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
       Notification.requestPermission();
     }
   }, []);
 
-  // --- NEW: Extracted fetchInbox so we can call it globally when a message arrives ---
   const fetchInbox = useCallback(async (currentUserEmail: string) => {
     try {
       const token = localStorage.getItem('token');
@@ -61,13 +59,9 @@ export default function Messages() {
         const loggedInUser = userRes.data.userThatRequestedThis;
         setUser(loggedInUser);
         
-        // 1. Join Global Channel for Push Notifications
         socket.emit('setup_user', loggedInUser.email);
-
-        // 2. Load the Sidebar
         await fetchInbox(loggedInUser.email);
 
-        // 3. Handle Teleporting from Dashboard
         if (location.state && location.state.newChat) {
           const item = location.state.newChat;
           const inboxRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/messages/inbox', { headers: { Authorization: `Bearer ${token}` } });
@@ -95,20 +89,46 @@ export default function Messages() {
     initializePage();
   }, [navigate, location.state, fetchInbox]);
 
-  // --- NEW: Global Notification Listener ---
+  // --- NEW: Mobile Wake-Up & Reconnect Logic ---
+  useEffect(() => {
+    if (!user) return;
+
+    // 1. Listen for the phone waking up or switching back to the tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log("📱 Mobile Tab woke up! Refreshing data...");
+        fetchInbox(user.email);
+        // Force socket to re-register the user to the global channel just in case it dropped
+        socket.emit('setup_user', user.email);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // 2. Listen for Socket.io natively re-establishing a dropped connection
+    const handleSocketReconnect = () => {
+      console.log("🔌 Socket reconnected! Refreshing data...");
+      fetchInbox(user.email);
+      socket.emit('setup_user', user.email);
+    };
+    socket.on('connect', handleSocketReconnect);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      socket.off('connect', handleSocketReconnect);
+    };
+  }, [user, fetchInbox]);
+  // ---------------------------------------------
+
   useEffect(() => {
     if (!user) return;
 
     const handleGlobalNotification = (newMsg: any) => {
-      // 1. Trigger Phone/Browser Push Notification
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification(`New message from ${newMsg.sender_email.split('@')[0]}`, {
           body: newMsg.content,
           icon: '/favicon.ico'
         });
       }
-
-      // 2. Instantly refresh the sidebar so the new message pops to the top
       fetchInbox(user.email);
     };
 
@@ -138,12 +158,12 @@ export default function Messages() {
 
     const handleMessageEdited = (editedMsg: any) => {
       setMessageList((list) => list.map(msg => msg.id === editedMsg.id ? editedMsg : msg));
-      fetchInbox(user.email); // Refresh sidebar snippet
+      fetchInbox(user.email); 
     };
 
     const handleMessageDeleted = (data: any) => {
       setMessageList((list) => list.filter(msg => msg.id !== data.message_id));
-      fetchInbox(user.email); // Refresh sidebar snippet
+      fetchInbox(user.email); 
     };
 
     socket.on('receive_message', handleReceiveMessage);
@@ -181,7 +201,6 @@ export default function Messages() {
       });
     }
     setCurrentMessage('');
-    // Ensure sender's sidebar updates immediately
     setTimeout(() => fetchInbox(user.email), 100); 
   };
 
@@ -206,7 +225,6 @@ export default function Messages() {
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', backgroundColor: '#111b21', color: '#e9edef', fontFamily: 'Segoe UI, Helvetica Neue, Helvetica, Arial, sans-serif', overflow: 'hidden' }}>
       
-      {/* LEFT PANEL: Chat List */}
       {showSidebar && (
         <div style={{ width: isMobile ? '100%' : '30%', minWidth: isMobile ? '100%' : '300px', borderRight: '1px solid #222d34', display: 'flex', flexDirection: 'column', backgroundColor: '#111b21' }}>
           <div style={{ height: '60px', backgroundColor: '#202c33', display: 'flex', alignItems: 'center', padding: '0 15px', justifyContent: 'space-between' }}>
@@ -250,7 +268,6 @@ export default function Messages() {
         </div>
       )}
 
-      {/* RIGHT PANEL: Chat Window */}
       {showChatWindow && (
         <div style={{ flex: 1, width: isMobile ? '100%' : '70%', display: 'flex', flexDirection: 'column', backgroundColor: '#0b141a', backgroundImage: 'radial-gradient(#111b21 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
           
