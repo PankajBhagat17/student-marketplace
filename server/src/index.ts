@@ -336,6 +336,6 @@ server.listen(PORT, () => {
 sequelize.authenticate()
   .then(async () => {
     console.log('✅ Database connection has been established successfully.');
-await sequelize.sync({ force: true }); // WARNING: THIS WILL DELETE ALL EXISTING DATA    console.log('📦 Database tables synced!');
+await sequelize.sync({ alter: true }); // WARNING: THIS WILL DELETE ALL EXISTING DATA    console.log('📦 Database tables synced!');
   })
   .catch((error) => console.error('❌ Unable to connect to the database:', error));
