@@ -237,7 +237,6 @@ export default function Dashboard() {
               </Link>
             )}
             
-            {/* --- NEW: The Inbox Button --- */}
             {user && (
               <Link to="/messages" className="amz-cart" style={{ marginRight: '10px', textDecoration: 'none' }}>
                 💬 Inbox
@@ -382,7 +381,6 @@ export default function Dashboard() {
                      </div>
                    )}
  
-                   {/* --- UPDATED: The Buyer Actions Section (WhatsApp + Direct Message) --- */}
                    {(!user || (user && user.email !== item.seller_email)) && item.status !== 'sold' && (
                      <div style={{ marginTop: '15px', borderTop: '1px solid #333', paddingTop: '10px' }}>
                        <div style={{ display: 'flex', gap: '10px' }}>
@@ -392,9 +390,10 @@ export default function Dashboard() {
                          >
                            WhatsApp
                          </button>
+                         {/* --- NEW: We pass the item data over to the Messages page here! --- */}
                          <button 
                            onClick={() => {
-                             if(checkAuth()) navigate('/messages'); // Teleport to Inbox!
+                             if(checkAuth()) navigate('/messages', { state: { newChat: item } });
                            }} 
                            style={{ flex: 1, padding: '10px', background: '#febd69', color: '#111', border: 'none', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
                          >

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom'; // --- NEW: Added useLocation
 import { io } from 'socket.io-client';
 import axios from 'axios';
 
@@ -8,15 +8,15 @@ const socket = io('https://student-marketplace-ho49.onrender.com');
 
 export default function Messages() {
   const navigate = useNavigate();
+  const location = useLocation(); // --- NEW: To catch data from Dashboard
+  
   const [user, setUser] = useState<any>(null);
   const [conversations, setConversations] = useState<any[]>([]);
   const [activeChat, setActiveChat] = useState<any | null>(null);
   const [currentMessage, setCurrentMessage] = useState('');
   const [messageList, setMessageList] = useState<any[]>([]);
   
-  // --- NEW: State for Editing Messages ---
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
-  
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -44,33 +44,54 @@ export default function Messages() {
         
         const inboxRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/messages/inbox', { headers: { Authorization: `Bearer ${token}` } });
         setConversations(inboxRes.data);
+
+        // --- NEW: Magic Logic to open a blank chat if coming from Dashboard ---
+        if (location.state && location.state.newChat) {
+          const item = location.state.newChat;
+          
+          // Check if you already have history with this item
+          const existingChat = inboxRes.data.find((c: any) => c.listing_id === item.id && c.other_person_email === item.seller_email);
+          
+          if (existingChat) {
+            setActiveChat(existingChat);
+            setMessageList(existingChat.past_messages || []);
+          } else {
+            // No history? Create a brand new blank chat window!
+            setActiveChat({
+              listing_id: item.id,
+              listing_title: item.title,
+              seller_email: item.seller_email,
+              other_person_email: item.seller_email,
+              past_messages: []
+            });
+            setMessageList([]);
+          }
+          // Clear the "newChat" memory so it doesn't accidentally reopen if you refresh the page
+          window.history.replaceState({}, document.title);
+        }
+
       } catch (err) {
         console.error('Failed to load inbox');
       }
     };
     fetchInbox();
-  }, [navigate]);
+  }, [navigate, location.state]);
 
-  // --- UPDATED: Socket Connections with New Features ---
   useEffect(() => {
     if (!activeChat || !user) return;
 
     const room = `listing_${activeChat.listing_id}_${activeChat.seller_email}`;
     socket.emit('join_room', room);
-
-    // Tell the server we have read these messages!
     socket.emit('mark_read', { room, user_email: user.email });
 
     const handleReceiveMessage = (data: any) => {
       setMessageList((list) => [...list, data]);
-      // If we receive a message while looking at the chat, instantly mark it read
       if (data.sender_email !== user.email) {
         socket.emit('mark_read', { room, user_email: user.email });
       }
     };
 
     const handleMessagesRead = (data: any) => {
-      // If the other person read our messages, update the blue ticks
       if (data.user_email !== user.email) {
         setMessageList((list) => list.map(msg => ({ ...msg, is_read: true })));
       }
@@ -102,7 +123,6 @@ export default function Messages() {
     const room = `listing_${activeChat.listing_id}_${activeChat.seller_email}`;
 
     if (editingMessageId) {
-      // Send an EDIT request
       socket.emit('edit_message', {
         room,
         message_id: editingMessageId,
@@ -111,7 +131,6 @@ export default function Messages() {
       });
       setEditingMessageId(null);
     } else {
-      // Send a NEW message
       socket.emit('send_message', {
         room,
         listing_id: activeChat.listing_id,
@@ -194,7 +213,6 @@ export default function Messages() {
           
           {activeChat ? (
             <>
-              {/* Chat Header */}
               <div style={{ height: '60px', backgroundColor: '#202c33', display: 'flex', alignItems: 'center', padding: '0 20px', borderLeft: '1px solid #222d34' }}>
                 {isMobile && (
                   <button onClick={() => { setActiveChat(null); setEditingMessageId(null); setCurrentMessage(''); }} style={{ background: 'transparent', border: 'none', color: '#00a884', fontSize: '1.5rem', marginRight: '15px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>←</button>
@@ -208,7 +226,6 @@ export default function Messages() {
                 </div>
               </div>
 
-              {/* Chat Messages */}
               <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {messageList.map((msg, index) => {
                   const isMe = msg.sender_email === user?.email;
@@ -216,8 +233,6 @@ export default function Messages() {
 
                   return (
                     <div key={index} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', group: 'hover' }}>
-                      
-                      {/* --- ACTIONS (Edit / Delete) --- */}
                       {isMe && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '10px', opacity: 0.8 }}>
                           {!msg.is_read && (
@@ -226,16 +241,11 @@ export default function Messages() {
                           <button onClick={() => deleteMessage(msg.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem' }} title="Delete Message">🗑️</button>
                         </div>
                       )}
-
                       <div style={{ maxWidth: '75%', padding: '6px 8px 6px 12px', borderRadius: '8px', backgroundColor: isMe ? '#005c4b' : '#202c33', color: '#e9edef', borderTopRightRadius: isMe ? '0' : '8px', borderTopLeftRadius: isMe ? '8px' : '0', boxShadow: '0 1px 0.5px rgba(11,20,26,.13)', fontSize: '0.95rem', lineHeight: '1.4', wordBreak: 'break-word', display: 'flex', flexDirection: 'column' }}>
-                        
                         <span style={{ paddingBottom: '4px' }}>{msg.content}</span>
-                        
                         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '4px', marginTop: '-4px' }}>
                           {msg.is_edited && <span style={{ fontSize: '0.65rem', color: '#8696a0', fontStyle: 'italic', marginRight: '4px' }}>Edited</span>}
                           <span style={{ fontSize: '0.65rem', color: isMe ? '#87aca3' : '#8696a0' }}>{timeString}</span>
-                          
-                          {/* --- BLUE TICKS --- */}
                           {isMe && (
                             <span style={{ fontSize: '0.7rem', color: msg.is_read ? '#53bdeb' : '#8696a0' }}>
                               {msg.is_read ? '✓✓' : '✓'}
@@ -249,7 +259,6 @@ export default function Messages() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Chat Input */}
               <div style={{ minHeight: '65px', backgroundColor: '#202c33', padding: '10px 15px', display: 'flex', gap: '10px', alignItems: 'center' }}>
                 {editingMessageId && (
                   <button onClick={() => { setEditingMessageId(null); setCurrentMessage(''); }} style={{ color: '#ef4444', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>✕ Cancel Edit</button>
