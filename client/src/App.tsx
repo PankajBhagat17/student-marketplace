@@ -3,7 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Register from './pages/Register';
-import Profile from './pages/Profile'; // <-- NEW IMPORT
+import Profile from './pages/Profile';
+import Messages from './pages/Messages'; // <-- NEW IMPORT
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const token = localStorage.getItem('token');
@@ -16,6 +17,7 @@ function App() {
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/messages" element={<Messages />} />
       
       {/* Secure Dashboard Route */}
       <Route 

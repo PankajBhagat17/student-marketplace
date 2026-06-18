@@ -4,7 +4,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast'; 
-import ChatBox from '../components/ChatBox'; // --- NEW: Imported your ChatBox!
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -31,9 +30,6 @@ export default function Dashboard() {
   const [newPrice, setNewPrice] = useState('');
   const [newPostCategory, setNewPostCategory] = useState('Textbooks');
   const [imageFile, setImageFile] = useState<File | null>(null);
-
-  // --- NEW: Tracks which item's chatbox is currently open
-  const [activeChat, setActiveChat] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -240,6 +236,14 @@ export default function Dashboard() {
                 <span className="amz-text-bold">👤</span>
               </Link>
             )}
+            
+            {/* --- NEW: The Inbox Button --- */}
+            {user && (
+              <Link to="/messages" className="amz-cart" style={{ marginRight: '10px', textDecoration: 'none' }}>
+                💬 Inbox
+              </Link>
+            )}
+
             <button onClick={() => { if(checkAuth()) setViewMode('Wishlist') }} className="amz-cart">
               <span className="amz-cart-count">{favorites.length}</span>
               🛒
@@ -378,7 +382,7 @@ export default function Dashboard() {
                      </div>
                    )}
  
-                   {/* --- UPDATED: The Buyer Actions Section (WhatsApp + Live Chat) --- */}
+                   {/* --- UPDATED: The Buyer Actions Section (WhatsApp + Direct Message) --- */}
                    {(!user || (user && user.email !== item.seller_email)) && item.status !== 'sold' && (
                      <div style={{ marginTop: '15px', borderTop: '1px solid #333', paddingTop: '10px' }}>
                        <div style={{ display: 'flex', gap: '10px' }}>
@@ -390,24 +394,13 @@ export default function Dashboard() {
                          </button>
                          <button 
                            onClick={() => {
-                             if(checkAuth()) setActiveChat(activeChat === item.id ? null : item.id);
+                             if(checkAuth()) navigate('/messages'); // Teleport to Inbox!
                            }} 
-                           style={{ flex: 1, padding: '10px', background: activeChat === item.id ? '#444' : '#febd69', color: activeChat === item.id ? '#fff' : '#111', border: 'none', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
+                           style={{ flex: 1, padding: '10px', background: '#febd69', color: '#111', border: 'none', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
                          >
-                           {activeChat === item.id ? 'Close Chat ✕' : 'Live Chat 💬'}
+                           Message Seller 💬
                          </button>
                        </div>
-
-                       {/* --- NEW: The Hidden ChatBox that reveals when clicked --- */}
-                       {activeChat === item.id && user && (
-                         <div style={{ marginTop: '15px' }}>
-                           <ChatBox 
-                             listingId={item.id} 
-                             currentUserEmail={user.email} 
-                             sellerEmail={item.seller_email} 
-                           />
-                         </div>
-                       )}
                      </div>
                    )}
                  </motion.div>
@@ -456,6 +449,7 @@ export default function Dashboard() {
                     <button onClick={() => { setIsSidebarOpen(false); navigate('/profile'); }}>My Profile</button>
                     <button onClick={() => { setIsSidebarOpen(false); setViewMode('Wishlist'); }}>My Wishlist</button>
                     <button onClick={() => { setIsSidebarOpen(false); setViewMode('Mine'); }}>My Listings</button>
+                    <button onClick={() => { setIsSidebarOpen(false); navigate('/messages'); }}>My Inbox</button>
                     <button onClick={handleLogout} style={{ color: '#ef4444' }}>Log Out</button>
                   </>
                 ) : (

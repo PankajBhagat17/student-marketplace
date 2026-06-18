@@ -226,6 +226,57 @@ app.get('/api/favorites', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
+// --- 📥 THE INBOX ROUTE (WHATSAPP-STYLE) ---
+app.get('/api/messages/inbox', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userEmail = req.user?.email;
+
+    // 1. Find EVERY message where the user is either the sender OR the receiver
+    const allMessages: any = await Message.findAll({
+      where: {
+        [Op.or]: [
+          { sender_email: userEmail },
+          { receiver_email: userEmail }
+        ]
+      },
+      order: [['createdAt', 'ASC']] 
+    });
+
+    // 2. Group them into distinct conversations (Inbox Threads)
+    const inboxMap = new Map();
+
+    for (const msg of allMessages) {
+      const otherPerson = msg.sender_email === userEmail ? msg.receiver_email : msg.sender_email;
+      const convoKey = `${msg.listing_id}_${otherPerson}`;
+
+      if (!inboxMap.has(convoKey)) {
+        const listing: any = await Listing.findByPk(msg.listing_id);
+        inboxMap.set(convoKey, {
+          listing_id: msg.listing_id,
+          listing_title: listing ? listing.title : 'Deleted Item',
+          seller_email: listing ? listing.seller_email : otherPerson, 
+          other_person_email: otherPerson,
+          past_messages: [] 
+        });
+      }
+      inboxMap.get(convoKey).past_messages.push(msg);
+    }
+
+    // 3. Sort by most recent activity
+    const inboxArray = Array.from(inboxMap.values()).sort((a, b) => {
+      const lastMsgA = a.past_messages[a.past_messages.length - 1];
+      const lastMsgB = b.past_messages[b.past_messages.length - 1];
+      return new Date(lastMsgB.createdAt).getTime() - new Date(lastMsgA.createdAt).getTime();
+    });
+
+    res.json(inboxArray);
+  } catch (err: any) {
+    console.error('🔥 Inbox Fetch Error:', err.message);
+    res.status(500).json({ error: 'Failed to load inbox' });
+  }
+});
+// ------------------------------------------
+
 // --- ULTIMATE ERROR CATCHER ---
 app.use((err: any, req: any, res: any, next: any) => {
   console.error("🔥 FATAL MIDDLEWARE ERROR:", err.message || err);
