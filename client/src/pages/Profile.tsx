@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import ChatBox from '../components/ChatBox'; // --- NEW: Imported your ChatBox!
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -13,9 +12,6 @@ export default function Profile() {
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editPrice, setEditPrice] = useState<string>('');
-  
-  // --- NEW: Track which chat room the seller has open
-  const [activeChat, setActiveChat] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -157,25 +153,15 @@ export default function Profile() {
                 </div>
               )}
 
-              {/* --- NEW: The Live Chat Room Toggle for the Seller --- */}
+              {/* --- NEW: Directs the seller to their Inbox --- */}
               {item.status !== 'sold' && (
                 <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px solid #333' }}>
                   <button 
-                    onClick={() => setActiveChat(activeChat === item.id ? null : item.id)} 
-                    style={{ width: '100%', padding: '10px', background: activeChat === item.id ? '#444' : '#febd69', color: activeChat === item.id ? '#fff' : '#111', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                    onClick={() => navigate('/messages')} 
+                    style={{ width: '100%', padding: '10px', background: '#febd69', color: '#111', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
                   >
-                    {activeChat === item.id ? 'Close Chat Room ✕' : '💬 Open Live Chat Room'}
+                    💬 View Inbox
                   </button>
-                  
-                  {activeChat === item.id && user && (
-                    <div style={{ marginTop: '15px' }}>
-                      <ChatBox 
-                        listingId={item.id} 
-                        currentUserEmail={user.email} 
-                        sellerEmail={user.email} 
-                      />
-                    </div>
-                  )}
                 </div>
               )}
 
