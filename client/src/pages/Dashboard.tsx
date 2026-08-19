@@ -207,7 +207,7 @@ export default function Dashboard() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      style={{ position: 'relative', width: '100%', minHeight: '100vh', overflowX: 'hidden' }}
+      style={{ position: 'relative', width: '100%', minHeight: '100vh', overflowX: 'hidden', boxSizing: 'border-box' }}
     >
       {/* PERFECTLY FIXED LOCAL VIDEO BACKGROUND */}
       <video
@@ -219,47 +219,47 @@ export default function Dashboard() {
       <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(5, 15, 25, 0.4)', zIndex: 1 }} />
 
       {/* DASHBOARD CONTENT */}
-      <div className="dashboard-wrapper" style={{ position: 'relative', zIndex: 10 }}>
+      <div className="dashboard-wrapper" style={{ position: 'relative', zIndex: 10, width: '100%', boxSizing: 'border-box' }}>
         <Toaster position="bottom-right" toastOptions={{ style: { background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' } }} />
 
-        <div className="amz-header-container">
-          <div className="amz-top-row" style={{ padding: '20px 4vw' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+        <div className="amz-header-container" style={{ width: '100%', boxSizing: 'border-box' }}>
+          <div className="amz-top-row" style={{ padding: '15px 4vw', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <button className="liquid-glass" style={{ padding: '8px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer' }} onClick={() => setIsSidebarOpen(true)}>☰</button>
-              <h2 className="amz-brand">Campus<span style={{ color: '#febd69', fontStyle: 'italic' }}>Trade</span></h2>
+              <h2 className="amz-brand" style={{ fontSize: 'clamp(1.4rem, 2.5vw, 1.8rem)', margin: 0 }}>Campus<span style={{ color: '#febd69', fontStyle: 'italic' }}>Trade</span></h2>
             </div>
             
-            <div className="amz-actions">
+            <div className="amz-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
               {user && user.email === 'bhagatpankaj7249@gmail.com' && (
                 <button className="liquid-glass" onClick={() => window.open('https://student-marketplace-ho49.onrender.com/api/admin/export-data')} 
-                        style={{ padding: '8px 15px', borderRadius: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
-                  📊 Export Data
+                        style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.8rem', cursor: 'pointer' }}>
+                  📊 Export
                 </button>
               )}
 
               {user ? (
-                <Link to="/profile" className="liquid-glass" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 15px', borderRadius: '8px', textDecoration: 'none' }}>
-                  <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>{getDisplayName()} 👤</span>
+                <Link to="/profile" className="liquid-glass" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', textDecoration: 'none' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>{getDisplayName()} 👤</span>
                 </Link>
               ) : (
-                <Link to="/login" className="liquid-glass" style={{ padding: '8px 15px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                <Link to="/login" className="liquid-glass" style={{ padding: '6px 12px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.85rem' }}>
                   Sign in 👤
                 </Link>
               )}
               
               {user && (
-                <button onClick={() => navigate('/messages')} className="liquid-glass" style={{ padding: '8px 15px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                <button onClick={() => navigate('/messages')} className="liquid-glass" style={{ padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}>
                   💬 Inbox
                 </button>
               )}
 
-              <button onClick={() => { if(checkAuth()) setViewMode('Wishlist') }} className="liquid-glass" style={{ padding: '8px 15px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}>
-                🛒 Favorites ({favorites.length})
+              <button onClick={() => { if(checkAuth()) setViewMode('Wishlist') }} className="liquid-glass" style={{ padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                🛒 ({favorites.length})
               </button>
             </div>
           </div>
 
-          <div className="amz-search-row" style={{ padding: '0 4vw 15px 4vw' }}>
+          <div className="amz-search-row" style={{ padding: '0 4vw 12px 4vw' }}>
             <input 
               type="text" 
               placeholder="Search Marketplace..." 
@@ -270,84 +270,108 @@ export default function Dashboard() {
             <button onClick={applyAdvancedFilters}>🔍</button>
           </div>
 
-          <div className="amz-nav-row" style={{ padding: '10px 4vw', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-            <div style={{ display: 'flex', gap: '25px', overflowX: 'auto', flex: 1, scrollbarWidth: 'none', alignItems: 'center' }}>
-              <button className={filterCategory === 'All' ? 'active' : ''} onClick={() => setFilterCategory('All')}>Shop By Category</button>
+          {/* RESPONSIVE NAV ROW FOR BUTTONS & CATEGORIES */}
+          <div className="amz-nav-row" style={{ padding: '10px 4vw', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', gap: '15px', overflowX: 'auto', flex: '1 1 auto', scrollbarWidth: 'none', alignItems: 'center', minWidth: '200px' }}>
+              <button className={filterCategory === 'All' ? 'active' : ''} onClick={() => setFilterCategory('All')}>All</button>
               <button className={filterCategory === 'Textbooks' ? 'active' : ''} onClick={() => setFilterCategory('Textbooks')}>Textbooks</button>
               <button className={filterCategory === 'Electronics' ? 'active' : ''} onClick={() => setFilterCategory('Electronics')}>Electronics</button>
               <button className={filterCategory === 'Dorm Essentials' ? 'active' : ''} onClick={() => setFilterCategory('Dorm Essentials')}>Dorm Essentials</button>
               <button className={filterCategory === 'Lost & Found' ? 'active' : ''} onClick={() => setFilterCategory('Lost & Found')}>Lost & Found</button>
             </div>
             
-            <button 
-              onClick={() => { if(checkAuth()) setShowSellForm(!showSellForm); }} 
-              className="liquid-glass"
-              style={{ borderRadius: '9999px', padding: '8px 25px', fontWeight: 'bold', fontSize: '0.9rem', whiteSpace: 'nowrap', marginLeft: '10px', cursor: 'pointer' }}
-            >
-              {showSellForm ? 'Close Form ✕' : '+ Sell Item'}
-            </button>
+            {/* Fully Responsive Action Buttons */}
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button 
+                onClick={() => { 
+                  if(checkAuth()) { 
+                    setNewPostCategory('Lost & Found'); 
+                    setShowSellForm(true); 
+                  } 
+                }} 
+                className="liquid-glass"
+                style={{ borderRadius: '9999px', padding: '6px 14px', fontWeight: 'bold', fontSize: '0.82rem', cursor: 'pointer', background: 'rgba(254, 189, 105, 0.15)', borderColor: 'rgba(254, 189, 105, 0.4)', whiteSpace: 'nowrap' }}
+              >
+                🔍 Lost/Found
+              </button>
+
+              <button 
+                onClick={() => { 
+                  if(checkAuth()) { 
+                    setNewPostCategory('Textbooks'); 
+                    setShowSellForm(!showSellForm); 
+                  } 
+                }} 
+                className="liquid-glass"
+                style={{ borderRadius: '9999px', padding: '6px 16px', fontWeight: 'bold', fontSize: '0.82rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >
+                {showSellForm ? 'Close ✕' : '+ Sell Item'}
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="dashboard-body" style={{ padding: '30px 4vw' }}>
+        <div className="dashboard-body" style={{ padding: '20px 4vw', boxSizing: 'border-box' }}>
           
           <AnimatePresence>
             {showSellForm && (
               <motion.div 
                 initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} 
-                style={{ overflow: 'hidden', marginBottom: '30px' }}
+                style={{ overflow: 'hidden', marginBottom: '25px', width: '100%', boxSizing: 'border-box' }}
               >
-                <div className="item-card" style={{ margin: 0, maxWidth: '800px', marginLeft: 'auto', marginRight: 'auto', textAlign: 'left' }}>
-                  <h3 style={{ margin: '0 0 20px 0', color: 'hsl(var(--foreground))', fontFamily: 'var(--font-display)', fontSize: '2.2rem', fontWeight: 'normal' }}>Post a New Item</h3>
-                  <form onSubmit={handleCreateListing}>
-                    <input type="text" style={{width: '100%', padding: '15px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', marginBottom: '15px'}} placeholder="Item Title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} required />
-                    <input type="number" style={{width: '100%', padding: '15px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', marginBottom: '15px'}} placeholder="Price (₹)" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} required />
-                    <select style={{width: '100%', padding: '15px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', marginBottom: '15px'}} value={newPostCategory} onChange={(e) => setNewPostCategory(e.target.value)}>
+                <div className="item-card" style={{ margin: 0, maxWidth: '800px', marginLeft: 'auto', marginRight: 'auto', textAlign: 'left', padding: '20px', boxSizing: 'border-box' }}>
+                  <h3 style={{ margin: '0 0 15px 0', color: 'hsl(var(--foreground))', fontFamily: 'var(--font-display)', fontSize: 'clamp(1.5rem, 3vw, 2.2rem)', fontWeight: 'normal' }}>
+                    {newPostCategory === 'Lost & Found' ? 'Report Lost & Found Item 🔍' : 'Post a New Item 📦'}
+                  </h3>
+                  <form onSubmit={handleCreateListing} style={{ width: '100%', boxSizing: 'border-box' }}>
+                    <input type="text" style={{width: '100%', padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: 'white', marginBottom: '12px', boxSizing: 'border-box', fontSize: '0.95rem'}} placeholder={newPostCategory === 'Lost & Found' ? 'What did you lose or find?' : 'Item Title'} value={newTitle} onChange={(e) => setNewTitle(e.target.value)} required />
+                    <input type="number" style={{width: '100%', padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: 'white', marginBottom: '12px', boxSizing: 'border-box', fontSize: '0.95rem'}} placeholder={newPostCategory === 'Lost & Found' ? 'Reward Amount (₹) or 0' : 'Price (₹)'} value={newPrice} onChange={(e) => setNewPrice(e.target.value)} required />
+                    <select style={{width: '100%', padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: 'white', marginBottom: '12px', boxSizing: 'border-box', fontSize: '0.95rem'}} value={newPostCategory} onChange={(e) => setNewPostCategory(e.target.value)}>
                       <option value="Textbooks" style={{color: 'black'}}>Textbooks</option>
                       <option value="Electronics" style={{color: 'black'}}>Electronics</option>
                       <option value="Dorm Essentials" style={{color: 'black'}}>Dorm Essentials</option>
                       <option value="Lost & Found" style={{color: 'black'}}>Lost & Found 🔍</option>
                       <option value="Skills & Services" style={{color: 'black'}}>Skills & Services 🤝</option>
                     </select>
-                    <input type="file" accept="image/*" style={{width: '100%', padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', marginBottom: '15px'}} onChange={(e) => setImageFile(e.target.files ? e.target.files[0] : null)} />
+                    <input type="file" accept="image/*" style={{width: '100%', padding: '10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: 'white', marginBottom: '15px', boxSizing: 'border-box', fontSize: '0.9rem'}} onChange={(e) => setImageFile(e.target.files ? e.target.files[0] : null)} />
                     {imageFile && (
-                      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                        <img src={URL.createObjectURL(imageFile)} alt="Preview" style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '12px', border: '2px dashed rgba(255,255,255,0.2)' }} />
+                      <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+                        <img src={URL.createObjectURL(imageFile)} alt="Preview" style={{ width: '100%', height: '160px', objectFit: 'cover', borderRadius: '10px', border: '2px dashed rgba(255,255,255,0.2)' }} />
                       </div>
                     )}
-                    <button type="submit" className="liquid-glass" style={{ width: '100%', padding: '15px', borderRadius: '12px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer' }}>Publish Listing</button>
+                    <button type="submit" className="liquid-glass" style={{ width: '100%', padding: '12px', borderRadius: '10px', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer' }}>Publish Listing</button>
                   </form>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          <div className="listings-panel">
-            <div style={{ display: 'flex', gap: '15px', marginBottom: '30px' }}>
-              <button onClick={() => setViewMode('All')} className="liquid-glass" style={{ padding: '10px 25px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'All' ? 'rgba(255,255,255,0.15)' : 'transparent' }}>All Results</button>
+          <div className="listings-panel" style={{ width: '100%', boxSizing: 'border-box' }}>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+              <button onClick={() => setViewMode('All')} className="liquid-glass" style={{ padding: '8px 20px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem', background: viewMode === 'All' ? 'rgba(255,255,255,0.15)' : 'transparent' }}>All Results</button>
               {user && (
-                <button onClick={() => setViewMode('Mine')} className="liquid-glass" style={{ padding: '10px 25px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', background: viewMode === 'Mine' ? 'rgba(255,255,255,0.15)' : 'transparent' }}>My Items</button>
+                <button onClick={() => setViewMode('Mine')} className="liquid-glass" style={{ padding: '8px 20px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem', background: viewMode === 'Mine' ? 'rgba(255,255,255,0.15)' : 'transparent' }}>My Items</button>
               )}
             </div>
 
             <div className="listings-grid">
               {finalDisplayListings.length === 0 ? (
-                <div className="item-card" style={{ padding: '80px 20px', gridColumn: '1 / -1' }}>
-                  <h3 style={{ color: 'hsl(var(--foreground))', fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 'normal', margin: 0 }}>Silence.</h3>
-                  <p style={{ color: 'hsl(var(--muted-foreground))', marginTop: '10px', fontSize: '1.1rem' }}>No items found matching your criteria.</p>
+                <div className="item-card" style={{ padding: '60px 20px', gridColumn: '1 / -1', textAlign: 'center' }}>
+                  <h3 style={{ color: 'hsl(var(--foreground))', fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem, 4vw, 2.5rem)', fontWeight: 'normal', margin: 0 }}>Silence.</h3>
+                  <p style={{ color: 'hsl(var(--muted-foreground))', marginTop: '10px', fontSize: '1rem' }}>No items found matching your criteria.</p>
                 </div>
               ) : (
                 finalDisplayListings.map((item, index) => {
                    const isFavorited = favorites.includes(item.id);
                    return (
-                   <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: index * 0.05 }} className="item-card" style={{ opacity: item.status === 'sold' ? 0.6 : 1, position: 'relative' }}>
+                   <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: index * 0.05 }} className="item-card" style={{ opacity: item.status === 'sold' ? 0.6 : 1, position: 'relative', boxSizing: 'border-box' }}>
                      
-                     <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => handleToggleFavorite(item.id)} className="liquid-glass" style={{ position: 'absolute', top: '15px', left: '15px', borderRadius: '50%', padding: '10px', cursor: 'pointer', zIndex: 10, fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                     <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => handleToggleFavorite(item.id)} className="liquid-glass" style={{ position: 'absolute', top: '15px', left: '15px', borderRadius: '50%', padding: '8px', cursor: 'pointer', zIndex: 10, fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                        {isFavorited ? '❤️' : '🤍'}
                      </motion.button>
                      
                      {item.status === 'sold' && (
-                       <div style={{ position: 'absolute', top: '15px', right: '15px', background: '#ef4444', color: 'white', padding: '6px 12px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold', zIndex: 10 }}>SOLD</div>
+                       <div style={{ position: 'absolute', top: '15px', right: '15px', background: '#ef4444', color: 'white', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold', zIndex: 10 }}>SOLD</div>
                      )}
 
                      {item.imageUrl ? (
@@ -355,47 +379,47 @@ export default function Dashboard() {
                          src={item.imageUrl.startsWith('http') ? item.imageUrl : `https://student-marketplace-ho49.onrender.com${item.imageUrl}`} 
                          alt={item.title} 
                          onClick={() => setSelectedImage(item.imageUrl)}
-                         style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '12px', marginBottom: '20px', cursor: 'zoom-in', border: '1px solid rgba(255,255,255,0.05)' }} 
+                         style={{ width: '100%', height: '160px', objectFit: 'cover', borderRadius: '10px', marginBottom: '15px', cursor: 'zoom-in', border: '1px solid rgba(255,255,255,0.05)' }} 
                        />
                      ) : (
-                       <div style={{ height: '180px', background: 'rgba(0,0,0,0.2)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', color: 'rgba(255,255,255,0.5)' }}>No Image</div>
+                       <div style={{ height: '160px', background: 'rgba(0,0,0,0.2)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '15px', color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>No Image</div>
                      )}
 
-                     <h4 style={{ margin: '10px 0', color: 'hsl(var(--foreground))', fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 'normal', textDecoration: item.status === 'sold' ? 'line-through' : 'none' }}>{item.title}</h4>
-                     <p style={{ color: 'white', fontWeight: 'bold', fontSize: '1.4rem', margin: '5px 0' }}>
+                     <h4 style={{ margin: '8px 0', color: 'hsl(var(--foreground))', fontFamily: 'var(--font-display)', fontSize: 'clamp(1.5rem, 2.5vw, 2rem)', fontWeight: 'normal', textDecoration: item.status === 'sold' ? 'line-through' : 'none', wordBreak: 'break-word' }}>{item.title}</h4>
+                     <p style={{ color: 'white', fontWeight: 'bold', fontSize: '1.25rem', margin: '4px 0' }}>
                        {item.category === 'Lost & Found' ? 'Reward / N/A' : 
                         item.category === 'Skills & Services' && item.price == 0 ? 'Free / Negotiable' : 
                         `₹${item.price}`}
                      </p>
-                     <span style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: 'hsl(var(--muted-foreground))', border: '1px solid rgba(255,255,255,0.1)', padding: '6px 15px', borderRadius: '20px', fontSize: '0.85rem', display: 'inline-block', marginTop: '10px' }}>
+                     <span style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: 'hsl(var(--muted-foreground))', border: '1px solid rgba(255,255,255,0.1)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', display: 'inline-block', marginTop: '8px' }}>
                        {item.category}
                      </span>
                      
-                     <p style={{ fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))', marginTop: '20px' }}>
+                     <p style={{ fontSize: '0.8rem', color: 'hsl(var(--muted-foreground))', marginTop: '15px' }}>
                        Seller: {user ? item.seller_email.split('@')[0] : 'Log in to view'}
                      </p>
 
                      {user && user.email === item.seller_email && (
-                       <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                         {item.status !== 'sold' && <button onClick={() => handleMarkSold(item.id)} className="liquid-glass" style={{ flex: 1, padding: '10px', color: '#51cf66', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}>Mark Sold</button>}
-                         <button onClick={() => handleDelete(item.id)} className="liquid-glass" style={{ flex: 1, padding: '10px', color: '#ef4444', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}>Delete</button>
+                       <div style={{ display: 'flex', gap: '8px', marginTop: '15px' }}>
+                         {item.status !== 'sold' && <button onClick={() => handleMarkSold(item.id)} className="liquid-glass" style={{ flex: 1, padding: '8px', color: '#51cf66', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>Mark Sold</button>}
+                         <button onClick={() => handleDelete(item.id)} className="liquid-glass" style={{ flex: 1, padding: '8px', color: '#ef4444', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>Delete</button>
                        </div>
                      )}
 
                      {(!user || (user && user.email !== item.seller_email)) && item.status !== 'sold' && (
-                       <div style={{ marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '20px' }}>
-                         <div style={{ display: 'flex', gap: '10px' }}>
+                       <div style={{ marginTop: '15px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '15px' }}>
+                         <div style={{ display: 'flex', gap: '8px' }}>
                            <button 
                              onClick={() => handleWhatsAppContact(item.seller_phone || '919876543210', item.title)} 
                              className="liquid-glass"
-                             style={{ flex: 1, padding: '12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
+                             style={{ flex: 1, padding: '10px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}
                            >
                              WhatsApp
                            </button>
                            <button 
                              onClick={() => { if(checkAuth()) navigate('/messages', { state: { newChat: item } }); }} 
                              className="liquid-glass"
-                             style={{ flex: 1, padding: '12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
+                             style={{ flex: 1, padding: '10px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}
                            >
                              Message
                            </button>
