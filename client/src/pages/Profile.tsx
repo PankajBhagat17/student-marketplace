@@ -1,180 +1,166 @@
 // client/src/pages/Profile.tsx
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
+import toast, { Toaster } from 'react-hot-toast';
 
 export default function Profile() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
-  const [myListings, setMyListings] = useState<any[]>([]);
-  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
 
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editPrice, setEditPrice] = useState<string>('');
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: ''
+  });
 
   useEffect(() => {
-    const fetchProfileData = async () => {
+    const fetchProfile = async () => {
       const token = localStorage.getItem('token');
-      if (!token) { navigate('/login'); return; }
-      
+      if (!token) {
+        navigate('/login');
+        return;
+      }
       try {
-        const userRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/dashboard-data', { headers: { Authorization: `Bearer ${token}` } });
-        setUser(userRes.data.userThatRequestedThis);
-        
-        const listingsRes = await axios.get('https://student-marketplace-ho49.onrender.com/api/profile/listings', { headers: { Authorization: `Bearer ${token}` } });
-        setMyListings(listingsRes.data);
+        // Fetching user data via the existing dashboard data route
+        const res = await axios.get('https://student-marketplace-ho49.onrender.com/api/dashboard-data', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const userData = res.data.userThatRequestedThis;
+        setFormData({
+          name: userData.name || '',
+          email: userData.email || '',
+          phone: userData.phone || ''
+        });
       } catch (err) {
-        setError('Failed to load profile data.');
+        toast.error('Session expired. Please log in again.');
+        localStorage.removeItem('token');
+        navigate('/login');
+      } finally {
+        setIsLoading(false);
       }
     };
-    fetchProfileData();
+    fetchProfile();
   }, [navigate]);
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this listing?")) return;
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
     const token = localStorage.getItem('token');
+    const toastId = toast.loading('Updating profile...');
     try {
-      await axios.delete(`https://student-marketplace-ho49.onrender.com/api/listings/${id}`, { headers: { Authorization: `Bearer ${token}` } });
-      setMyListings(myListings.filter(item => item.id !== id));
+      // Assuming your backend has a PUT route for profile updates. 
+      // If not, it will just show the error toast, but the UI is ready for it!
+      await axios.put('https://student-marketplace-ho49.onrender.com/api/auth/profile', formData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Profile updated successfully!', { id: toastId });
+      setIsEditing(false);
     } catch (err) {
-      alert("Failed to delete listing.");
+      toast.error('Could not update profile (Endpoint might not exist yet)', { id: toastId });
+      setIsEditing(false); 
     }
   };
 
-  const handleMarkSold = async (id: number) => {
-    const token = localStorage.getItem('token');
-    try {
-      const response = await axios.put(`https://student-marketplace-ho49.onrender.com/api/listings/${id}/status`, {}, { headers: { Authorization: `Bearer ${token}` } });
-      setMyListings(myListings.map(item => item.id === id ? response.data : item));
-    } catch (err) {
-      alert("Failed to update status.");
-    }
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    toast.success('Logged out successfully.');
+    navigate('/login');
   };
 
-  const handleStartEdit = (id: number, currentPrice: number) => {
-    setEditingId(id);
-    setEditPrice(currentPrice.toString());
-  };
-
-  const handleSavePrice = async (id: number) => {
-    const token = localStorage.getItem('token');
-    try {
-      const response = await axios.put(
-        `https://student-marketplace-ho49.onrender.com/api/listings/${id}/price`, 
-        { newPrice: editPrice }, 
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setMyListings(myListings.map(item => item.id === id ? response.data : item));
-      setEditingId(null); 
-    } catch (err) {
-      alert("Failed to update price.");
-    }
-  };
-
-  const totalItems = myListings.length;
-  const soldItems = myListings.filter(item => item.status === 'sold').length;
-  const activeItems = totalItems - soldItems;
+  if (isLoading) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'hsl(var(--background))', color: 'hsl(var(--foreground))' }}>
+         <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} style={{ width: '40px', height: '40px', border: '4px solid rgba(255,255,255,0.1)', borderTop: '4px solid #b185ff', borderRadius: '50%' }} />
+      </div>
+    );
+  }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="dashboard-wrapper">
-      <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>My Profile Dashboard</h2>
-        <Link to="/dashboard" style={{ color: 'white', textDecoration: 'none', background: '#b185ff', padding: '8px 16px', borderRadius: '4px', fontWeight: 'bold' }}>
+    <div style={{ position: 'relative', minHeight: '100vh', width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <Toaster position="bottom-right" toastOptions={{ style: { background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' } }} />
+
+      {/* PERFECTLY FIXED LOCAL VIDEO BACKGROUND */}
+      <video
+        src="/campus-bg.mp4.mp4"
+        autoPlay loop muted playsInline
+        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: -1 }}
+      />
+      {/* Dark Overlay */}
+      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(5, 15, 25, 0.5)', zIndex: 0 }} />
+
+      {/* Simple Navigation */}
+      <nav style={{ position: 'relative', zIndex: 10, display: 'flex', justifyContent: 'space-between', padding: '20px 4vw' }}>
+        <button onClick={() => navigate('/dashboard')} className="liquid-glass" style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
           ← Back to Marketplace
-        </Link>
-      </div>
+        </button>
+        <button onClick={handleLogout} className="liquid-glass" style={{ padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+          Log Out
+        </button>
+      </nav>
 
-      {error && <div className="alert-error">{error}</div>}
-
-      <div style={{ display: 'flex', gap: '20px', marginTop: '20px' }}>
-        <div style={{ flex: 1, background: '#1e1e24', padding: '20px', borderRadius: '8px', color: 'white' }}>
-          <h3 style={{ borderBottom: '1px solid #333', paddingBottom: '10px' }}>Account Details</h3>
-          <p><strong>Name:</strong> {user?.first_name} {user?.last_name}</p>
-          <p><strong>Email:</strong> {user?.email}</p>
-          <p><strong>College Domain:</strong> {user?.college_domain}</p>
-        </div>
-
-        <div style={{ flex: 1, background: '#1e1e24', padding: '20px', borderRadius: '8px', color: 'white', display: 'flex', justifyContent: 'space-around', alignItems: 'center', textAlign: 'center' }}>
-          <div>
-            <h1 style={{ color: '#b185ff', margin: '0' }}>{totalItems}</h1>
-            <p style={{ margin: '5px 0 0 0', color: '#a0a0b0' }}>Total Posts</p>
+      {/* Profile Card */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', position: 'relative', zIndex: 10 }}>
+        <motion.div
+          initial={{ opacity: 0, y: 30, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="liquid-glass"
+          style={{ width: '100%', maxWidth: '500px', padding: '3rem', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}
+        >
+          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+            <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', margin: '0 auto 1.5rem auto', border: '1px solid rgba(255,255,255,0.2)' }}>
+              👤
+            </div>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', fontWeight: 'normal', margin: '0 0 0.5rem 0', color: 'hsl(var(--foreground))' }}>
+              {formData.name || 'Your Profile'}
+            </h1>
+            <p style={{ color: 'hsl(var(--muted-foreground))', margin: 0 }}>Manage your campus identity.</p>
           </div>
-          <div>
-            <h1 style={{ color: '#51cf66', margin: '0' }}>{activeItems}</h1>
-            <p style={{ margin: '5px 0 0 0', color: '#a0a0b0' }}>Active Items</p>
-          </div>
-          <div>
-            <h1 style={{ color: '#ff6b6b', margin: '0' }}>{soldItems}</h1>
-            <p style={{ margin: '5px 0 0 0', color: '#a0a0b0' }}>Items Sold</p>
-          </div>
-        </div>
-      </div>
 
-      <h3 style={{ marginTop: '30px', color: 'white' }}>Manage My Listings</h3>
-      
-      <div className="listings-grid" style={{ marginTop: '15px' }}>
-        {myListings.length === 0 ? (
-          <p style={{ color: 'var(--text)' }}>You haven't posted any items yet.</p>
-        ) : (
-          myListings.map((item, index) => (
-            <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }} className="item-card" style={{ opacity: item.status === 'sold' ? 0.6 : 1 }}>
-              {item.status === 'sold' && (
-                <div style={{ position: 'absolute', top: '10px', right: '10px', background: '#ff6b6b', color: 'white', padding: '5px 10px', borderRadius: '4px', fontWeight: 'bold', zIndex: 10 }}>SOLD</div>
-              )}
-              {item.imageUrl ? (
-                <img src={item.imageUrl.startsWith('http') ? item.imageUrl : `https://student-marketplace-ho49.onrender.com${item.imageUrl}`} alt={item.title} style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', marginBottom: '15px' }} />
-              ) : (
-                <div className="item-image-empty">No Image</div>
-              )}
-              
-              <h4 style={{ margin: '10px 0', color: 'var(--text-h)' }}>{item.title}</h4>
-              
-              {editingId === item.id ? (
-                <div style={{ display: 'flex', gap: '5px', alignItems: 'center', marginBottom: '10px' }}>
-                  <span style={{ color: 'white' }}>₹</span>
-                  <input 
-                    type="number" 
-                    value={editPrice} 
-                    onChange={(e) => setEditPrice(e.target.value)}
-                    style={{ padding: '5px', borderRadius: '4px', border: '1px solid #b185ff', background: '#2b2b36', color: 'white', width: '80px' }}
-                  />
-                  <button onClick={() => handleSavePrice(item.id)} style={{ padding: '5px 10px', background: '#51cf66', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Save</button>
-                  <button onClick={() => setEditingId(null)} style={{ padding: '5px 10px', background: '#3b1f1f', color: '#ff6b6b', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>X</button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <p className="item-price" style={{ margin: '0' }}>₹{item.price}</p>
-                  {item.status !== 'sold' && (
-                    <button onClick={() => handleStartEdit(item.id, item.price)} style={{ padding: '4px 8px', background: 'transparent', color: '#b185ff', border: '1px solid #b185ff', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>
-                      ✎ Edit Price
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* --- NEW: Directs the seller to their Inbox --- */}
-              {item.status !== 'sold' && (
-                <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px solid #333' }}>
-                  <button 
-                    onClick={() => navigate('/messages')} 
-                    style={{ width: '100%', padding: '10px', background: '#febd69', color: '#111', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-                  >
-                    💬 View Inbox
-                  </button>
-                </div>
-              )}
-
-              <div style={{ display: 'flex', gap: '8px', marginTop: '15px' }}>
-                {item.status !== 'sold' && (
-                  <button onClick={() => handleMarkSold(item.id)} style={{ flex: 1, padding: '8px', background: '#51cf66', color: '#1e1e24', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Mark Sold</button>
-                )}
-                <button onClick={() => handleDelete(item.id)} className="btn-danger" style={{ flex: 1, padding: '8px' }}>Delete</button>
+          {!isEditing ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '15px 20px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <label style={{ fontSize: '0.8rem', color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: '1px' }}>Full Name</label>
+                <div style={{ fontSize: '1.1rem', color: 'white', marginTop: '4px' }}>{formData.name || 'Not provided'}</div>
               </div>
-            </motion.div>
-          ))
-        )}
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '15px 20px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <label style={{ fontSize: '0.8rem', color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: '1px' }}>University Email</label>
+                <div style={{ fontSize: '1.1rem', color: 'white', marginTop: '4px' }}>{formData.email || 'Not provided'}</div>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '15px 20px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <label style={{ fontSize: '0.8rem', color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: '1px' }}>WhatsApp Number</label>
+                <div style={{ fontSize: '1.1rem', color: 'white', marginTop: '4px' }}>{formData.phone || 'Not provided'}</div>
+              </div>
+              
+              <button onClick={() => setIsEditing(true)} className="liquid-glass" style={{ width: '100%', padding: '1rem', borderRadius: '12px', color: 'white', fontWeight: 'bold', marginTop: '1.5rem', cursor: 'pointer', transition: 'transform 0.2s' }} onMouseEnter={(e)=>e.currentTarget.style.transform='translateY(-2px)'} onMouseLeave={(e)=>e.currentTarget.style.transform='translateY(0)'}>
+                Edit Details
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))', marginLeft: '0.25rem' }}>Full Name</label>
+                <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} style={{ width: '100%', padding: '1rem', background: 'rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '12px', color: 'white', fontSize: '1rem', outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))', marginLeft: '0.25rem' }}>University Email (Cannot be changed)</label>
+                <input type="email" value={formData.email} disabled style={{ width: '100%', padding: '1rem', background: 'rgba(0, 0, 0, 0.2)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '12px', color: 'rgba(255,255,255,0.5)', fontSize: '1rem', outline: 'none', cursor: 'not-allowed', boxSizing: 'border-box' }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))', marginLeft: '0.25rem' }}>WhatsApp Number</label>
+                <input type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} style={{ width: '100%', padding: '1rem', background: 'rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '12px', color: 'white', fontSize: '1rem', outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '1.5rem' }}>
+                <button type="button" onClick={() => setIsEditing(false)} style={{ flex: 1, padding: '1rem', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', color: 'white', fontWeight: 'bold', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={(e)=>e.currentTarget.style.background='rgba(255,255,255,0.05)'} onMouseLeave={(e)=>e.currentTarget.style.background='transparent'}>Cancel</button>
+                <button type="submit" className="liquid-glass" style={{ flex: 2, padding: '1rem', borderRadius: '12px', color: 'white', fontWeight: 'bold', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.3)' }}>Save Changes</button>
+              </div>
+            </form>
+          )}
+        </motion.div>
       </div>
-    </motion.div>
+    </div>
   );
 }

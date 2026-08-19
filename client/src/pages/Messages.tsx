@@ -1,7 +1,9 @@
+// client/src/pages/Messages.tsx
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import axios from 'axios';
+import { motion } from 'framer-motion';
 
 const socket = io('https://student-marketplace-ho49.onrender.com');
 
@@ -39,8 +41,6 @@ export default function Messages() {
     }
   }, []);
 
-  // --- FIX 1: CACHE BUSTING ---
-  // Added `?t=${new Date().getTime()}` to the URL so mobile browsers NEVER cache this request
   const fetchInbox = useCallback(async (currentUserEmail: string) => {
     try {
       const token = localStorage.getItem('token');
@@ -93,7 +93,6 @@ export default function Messages() {
     initializePage();
   }, [navigate, location.state, fetchInbox]);
 
-  // Mobile Wake-Up & Reconnect Logic
   useEffect(() => {
     if (!user) return;
     const handleVisibilityChange = () => {
@@ -116,8 +115,6 @@ export default function Messages() {
     };
   }, [user, fetchInbox]);
 
-  // --- FIX 2: FALLBACK POLLING (The WhatsApp Web Method) ---
-  // Silently checks for new messages every 10 seconds just in case the mobile socket died
   useEffect(() => {
     if (!user) return;
     const interval = setInterval(() => {
@@ -128,7 +125,6 @@ export default function Messages() {
     return () => clearInterval(interval);
   }, [user, fetchInbox]);
 
-  // Global Notification Listener
   useEffect(() => {
     if (!user) return;
     const handleGlobalNotification = (newMsg: any) => {
@@ -231,40 +227,52 @@ export default function Messages() {
   const showChatWindow = !isMobile || activeChat;
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw', backgroundColor: '#111b21', color: '#e9edef', fontFamily: 'Segoe UI, Helvetica Neue, Helvetica, Arial, sans-serif', overflow: 'hidden' }}>
+    <div style={{ position: 'relative', display: 'flex', height: '100vh', width: '100vw', color: 'hsl(var(--foreground))', fontFamily: 'var(--font-body)', overflow: 'hidden' }}>
       
+      {/* PERFECTLY FIXED LOCAL VIDEO BACKGROUND */}
+      <video
+        src="/campus-bg.mp4.mp4"
+        autoPlay loop muted playsInline
+        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }}
+      />
+      {/* Dark Overlay */}
+      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(5, 15, 25, 0.4)', zIndex: 1 }} />
+
+      {/* --- SIDEBAR --- */}
       {showSidebar && (
-        <div style={{ width: isMobile ? '100%' : '30%', minWidth: isMobile ? '100%' : '300px', borderRight: '1px solid #222d34', display: 'flex', flexDirection: 'column', backgroundColor: '#111b21' }}>
-          <div style={{ height: '60px', backgroundColor: '#202c33', display: 'flex', alignItems: 'center', padding: '0 15px', justifyContent: 'space-between' }}>
+        <div style={{ position: 'relative', zIndex: 10, width: isMobile ? '100%' : '30%', minWidth: isMobile ? '100%' : '320px', borderRight: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', background: 'rgba(0, 0, 0, 0.2)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+          
+          <div style={{ height: '70px', background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', padding: '0 20px', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
                 {user ? getInitials(user.email) : ''}
               </div>
-              <span style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>Chats</span>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.8rem', letterSpacing: '-0.5px' }}>Inbox</span>
             </div>
-            <button onClick={() => navigate('/dashboard')} style={{ background: 'transparent', border: 'none', color: '#00a884', cursor: 'pointer', fontWeight: 'bold' }}>
+            <button onClick={() => navigate('/dashboard')} className="liquid-glass" style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>
               Close ✕
             </button>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {conversations.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#8696a0' }}>No active chats yet.</div>
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'hsl(var(--muted-foreground))' }}>No active chats yet.</div>
             ) : (
               conversations.map((chat, idx) => {
                 const lastMsg = chat.past_messages[chat.past_messages.length - 1];
                 const isActive = activeChat?.listing_id === chat.listing_id && activeChat?.other_person_email === chat.other_person_email;
+                
                 return (
-                  <div key={idx} onClick={() => { setActiveChat(chat); setMessageList(chat.past_messages || []); setEditingMessageId(null); setCurrentMessage(''); }} style={{ display: 'flex', alignItems: 'center', padding: '12px 15px', cursor: 'pointer', backgroundColor: isActive && !isMobile ? '#2a3942' : 'transparent', borderBottom: '1px solid #222d34' }}>
-                    <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: '#005c4b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 'bold', marginRight: '15px', flexShrink: 0 }}>
+                  <div key={idx} onClick={() => { setActiveChat(chat); setMessageList(chat.past_messages || []); setEditingMessageId(null); setCurrentMessage(''); }} style={{ display: 'flex', alignItems: 'center', padding: '15px 20px', cursor: 'pointer', background: isActive && !isMobile ? 'rgba(255,255,255,0.1)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.2s' }}>
+                    <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 'bold', marginRight: '15px', flexShrink: 0 }}>
                       {getInitials(chat.other_person_email)}
                     </div>
                     <div style={{ flex: 1, overflow: 'hidden' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                         <span style={{ fontWeight: '500', fontSize: '1.05rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chat.other_person_email.split('@')[0]}</span>
                       </div>
-                      <div style={{ color: '#8696a0', fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <span style={{ fontSize: '0.75rem', color: '#febd69', border: '1px solid #febd69', padding: '1px 4px', borderRadius: '4px' }}>{chat.listing_title}</span>
+                      <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '0.7rem', color: '#febd69', border: '1px solid rgba(254,189,105,0.5)', background: 'rgba(254,189,105,0.1)', padding: '2px 6px', borderRadius: '4px' }}>{chat.listing_title}</span>
                         {lastMsg?.content || 'Started a chat'}
                       </div>
                     </div>
@@ -276,79 +284,105 @@ export default function Messages() {
         </div>
       )}
 
+      {/* --- CHAT WINDOW --- */}
       {showChatWindow && (
-        <div style={{ flex: 1, width: isMobile ? '100%' : '70%', display: 'flex', flexDirection: 'column', backgroundColor: '#0b141a', backgroundImage: 'radial-gradient(#111b21 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
+        <div style={{ position: 'relative', zIndex: 10, flex: 1, width: isMobile ? '100%' : '70%', display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.1)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
           
           {activeChat ? (
             <>
-              <div style={{ height: '60px', backgroundColor: '#202c33', display: 'flex', alignItems: 'center', padding: '0 20px', borderLeft: '1px solid #222d34' }}>
+              {/* Chat Header */}
+              <div style={{ height: '70px', background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', padding: '0 20px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                 {isMobile && (
-                  <button onClick={() => { setActiveChat(null); setEditingMessageId(null); setCurrentMessage(''); }} style={{ background: 'transparent', border: 'none', color: '#00a884', fontSize: '1.5rem', marginRight: '15px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>←</button>
+                  <button onClick={() => { setActiveChat(null); setEditingMessageId(null); setCurrentMessage(''); }} style={{ background: 'transparent', border: 'none', color: 'white', fontSize: '1.5rem', marginRight: '15px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>←</button>
                 )}
-                <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#005c4b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', marginRight: '15px' }}>
+                <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', marginRight: '15px' }}>
                   {getInitials(activeChat.other_person_email)}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontWeight: '500', fontSize: '1.1rem' }}>{activeChat.other_person_email.split('@')[0]}</span>
-                  <span style={{ color: '#8696a0', fontSize: '0.85rem' }}>Regarding: {activeChat.listing_title}</span>
+                  <span style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.85rem' }}>Regarding: {activeChat.listing_title}</span>
                 </div>
               </div>
 
-              <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {/* Message List */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '25px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 {messageList.map((msg, index) => {
                   const isMe = msg.sender_email === user?.email;
                   const timeString = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
                   return (
-                    <div key={index} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', group: 'hover' }}>
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} key={index} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
+                      
                       {isMe && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '10px', opacity: 0.8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '10px', opacity: 0.6 }}>
                           {!msg.is_read && (
                             <button onClick={() => startEditing(msg)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem' }} title="Edit Message">✏️</button>
                           )}
                           <button onClick={() => deleteMessage(msg.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem' }} title="Delete Message">🗑️</button>
                         </div>
                       )}
-                      <div style={{ maxWidth: '75%', padding: '6px 8px 6px 12px', borderRadius: '8px', backgroundColor: isMe ? '#005c4b' : '#202c33', color: '#e9edef', borderTopRightRadius: isMe ? '0' : '8px', borderTopLeftRadius: isMe ? '8px' : '0', boxShadow: '0 1px 0.5px rgba(11,20,26,.13)', fontSize: '0.95rem', lineHeight: '1.4', wordBreak: 'break-word', display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ paddingBottom: '4px' }}>{msg.content}</span>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '4px', marginTop: '-4px' }}>
-                          {msg.is_edited && <span style={{ fontSize: '0.65rem', color: '#8696a0', fontStyle: 'italic', marginRight: '4px' }}>Edited</span>}
-                          <span style={{ fontSize: '0.65rem', color: isMe ? '#87aca3' : '#8696a0' }}>{timeString}</span>
+                      
+                      {/* Glass Message Bubble */}
+                      <div style={{ 
+                        maxWidth: '75%', 
+                        padding: '10px 15px', 
+                        borderRadius: '16px', 
+                        background: isMe ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.4)', 
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        border: isMe ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(255,255,255,0.05)',
+                        color: 'white', 
+                        borderTopRightRadius: isMe ? '4px' : '16px', 
+                        borderTopLeftRadius: isMe ? '16px' : '4px', 
+                        boxShadow: '0 4px 15px rgba(0,0,0,0.1)', 
+                        fontSize: '1rem', 
+                        lineHeight: '1.5', 
+                        wordBreak: 'break-word', 
+                        display: 'flex', 
+                        flexDirection: 'column' 
+                      }}>
+                        <span style={{ paddingBottom: '6px' }}>{msg.content}</span>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                          {msg.is_edited && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic', marginRight: '4px' }}>Edited</span>}
+                          <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)' }}>{timeString}</span>
                           {isMe && (
-                            <span style={{ fontSize: '0.7rem', color: msg.is_read ? '#53bdeb' : '#8696a0' }}>
+                            <span style={{ fontSize: '0.75rem', color: msg.is_read ? '#60a5fa' : 'rgba(255,255,255,0.5)' }}>
                               {msg.is_read ? '✓✓' : '✓'}
                             </span>
                           )}
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
                 <div ref={messagesEndRef} />
               </div>
 
-              <div style={{ minHeight: '65px', backgroundColor: '#202c33', padding: '10px 15px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+              {/* Chat Input Box */}
+              <div style={{ minHeight: '80px', background: 'rgba(0,0,0,0.3)', padding: '15px 20px', display: 'flex', gap: '15px', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                 {editingMessageId && (
-                  <button onClick={() => { setEditingMessageId(null); setCurrentMessage(''); }} style={{ color: '#ef4444', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>✕ Cancel Edit</button>
+                  <button onClick={() => { setEditingMessageId(null); setCurrentMessage(''); }} className="liquid-glass" style={{ color: '#ef4444', padding: '10px 15px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.3)', cursor: 'pointer', fontWeight: 'bold' }}>✕ Cancel</button>
                 )}
                 <input
                   type="text"
                   value={currentMessage}
-                  placeholder="Type a message"
+                  placeholder="Type your message..."
                   onChange={(e) => setCurrentMessage(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-                  style={{ flex: 1, backgroundColor: '#2a3942', border: 'none', borderRadius: '24px', padding: '12px 15px', color: '#e9edef', outline: 'none', fontSize: '1rem' }}
+                  style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', padding: '15px 20px', color: 'white', outline: 'none', fontSize: '1rem', transition: 'border-color 0.2s' }}
+                  onFocus={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.3)'}
+                  onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'}
                 />
-                <button onClick={sendMessage} style={{ backgroundColor: '#00a884', color: '#111b21', border: 'none', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.2rem', flexShrink: 0 }}>
+                <button onClick={sendMessage} className="liquid-glass" style={{ width: '50px', height: '50px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.2rem', flexShrink: 0, transition: 'transform 0.2s' }} onMouseEnter={(e)=>e.currentTarget.style.transform='scale(1.05)'} onMouseLeave={(e)=>e.currentTarget.style.transform='scale(1)'}>
                   {editingMessageId ? '💾' : '➤'}
                 </button>
               </div>
             </>
           ) : (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: '#8696a0', padding: '20px', textAlign: 'center' }}>
-              <div style={{ fontSize: '4rem', marginBottom: '20px' }}>💬</div>
-              <h2 style={{ fontWeight: '300', margin: '0 0 10px 0' }}>Student Marketplace Messages</h2>
-              <p style={{ margin: 0 }}>Select a chat from the sidebar to start messaging.</p>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: 'hsl(var(--muted-foreground))', padding: '20px', textAlign: 'center' }}>
+              <div style={{ fontSize: '4rem', marginBottom: '20px', opacity: 0.5 }}>💬</div>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 'normal', margin: '0 0 10px 0', color: 'hsl(var(--foreground))' }}>Silence the noise.</h2>
+              <p style={{ margin: 0, fontSize: '1.1rem' }}>Select a chat from the sidebar to begin.</p>
             </div>
           )}
         </div>

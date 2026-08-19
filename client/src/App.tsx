@@ -4,7 +4,8 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
-import Messages from './pages/Messages'; // <-- NEW IMPORT
+import Messages from './pages/Messages';
+import Landing from './pages/Landing'; // <-- NEW IMPORT
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const token = localStorage.getItem('token');
@@ -14,7 +15,9 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      {/* Set the Landing page as the front door */}
+      <Route path="/" element={<Landing />} />
+      
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/messages" element={<Messages />} />
@@ -29,7 +32,7 @@ function App() {
         } 
       />
 
-      {/* --- NEW SECURE PROFILE ROUTE --- */}
+      {/* --- SECURE PROFILE ROUTE --- */}
       <Route 
         path="/profile" 
         element={

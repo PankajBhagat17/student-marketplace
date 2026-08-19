@@ -1,100 +1,78 @@
 // client/src/pages/Login.tsx
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useNavigate, Link } from 'react-router-dom';
-import toast, { Toaster } from 'react-hot-toast'; // <-- NEW: Import Toast
+import { motion } from 'framer-motion';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false); // <-- NEW: Loading state
-  
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(''); 
-    setIsLoading(true); // Disable the button
-
-    // 1. Instantly show a loading popup
-    const toastId = toast.loading('Verifying credentials, please wait...');
-
     try {
-      const response = await axios.post('https://student-marketplace-ho49.onrender.com/api/auth/login', {
-        email,
-        password,
-      });
-
-      localStorage.setItem('token', response.data.token);
-      
-      // 2. Turn the loading popup into a success message
-      toast.success('Welcome back to the marketplace!', { id: toastId });
-      
+      const res = await axios.post('https://student-marketplace-ho49.onrender.com/api/auth/login', { email, password });
+      localStorage.setItem('token', res.data.token);
       navigate('/dashboard');
-      
-    } catch (err: any) {
-      setIsLoading(false); // Re-enable the button
-      let errorMessage = 'Something went wrong trying to connect to the server.';
-      
-      if (err.response && err.response.data && err.response.data.error) {
-        errorMessage = err.response.data.error;
-      }
-      
-      setError(errorMessage);
-      
-      // 3. Turn the loading popup into an error message
-      toast.error('Login failed.', { id: toastId });
+    } catch (err) {
+      setError('Invalid email or password');
     }
   };
 
   return (
-    <div className="login-container">
-      {/* --- NEW: Toaster Component for UI popups --- */}
-      <Toaster position="bottom-right" toastOptions={{ style: { background: '#333', color: '#fff', borderRadius: '8px' } }} />
+    <div style={{ position: 'relative', minHeight: '100vh', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
       
-      <div className="login-card">
-        <h2>Student Marketplace</h2>
-        <p>Please log in with your email address.</p>
-        
-        <form onSubmit={handleLogin}>
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input 
-              type="email" 
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="student@university.edu" 
-              required 
-            />
+      {/* PERFECTLY FIXED LOCAL VIDEO BACKGROUND */}
+      <video
+        src="/campus-bg.mp4.mp4"
+        autoPlay loop muted playsInline
+        style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', objectFit: 'cover', zIndex: 0 }}
+      />
+      {/* Dark Overlay for text readability */}
+      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(5, 15, 25, 0.4)', zIndex: 1 }} />
+
+      {/* Cinematic Animated Form Card */}
+      <motion.div 
+        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="liquid-glass"
+        style={{ position: 'relative', zIndex: 10, width: '100%', maxWidth: '420px', padding: '3rem 2.5rem', borderRadius: '24px', margin: '20px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}
+      >
+        <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '3.2rem', fontWeight: 'normal', margin: '0 0 0.5rem 0', letterSpacing: '-1px', color: 'hsl(var(--foreground))' }}>Welcome back.</h1>
+          <p style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.95rem', margin: 0 }}>Enter your credentials to continue.</p>
+        </div>
+
+        {error && (
+          <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', padding: '0.75rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.85rem', textAlign: 'center' }}>
+            {error}
+          </motion.div>
+        )}
+
+        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))', marginLeft: '0.25rem' }}>Email Address</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="student@university.edu" style={{ width: '100%', padding: '1rem 1.25rem', backgroundColor: 'rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: 'hsl(var(--foreground))', fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }} onFocus={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.4)'} onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'} />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input 
-              type="password" 
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••" 
-              required 
-            />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))', marginLeft: '0.25rem' }}>Password</label>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="••••••••" style={{ width: '100%', padding: '1rem 1.25rem', backgroundColor: 'rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: 'hsl(var(--foreground))', fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }} onFocus={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.4)'} onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'} />
           </div>
 
-          {error && <div className="alert-error">{error}</div>}
-
-          {/* --- NEW: Dynamic Loading Button --- */}
-          <button type="submit" className="btn-primary" disabled={isLoading} style={{ opacity: isLoading ? 0.7 : 1, cursor: isLoading ? 'not-allowed' : 'pointer' }}>
-            {isLoading ? '⏳ Logging in...' : 'Log In'}
-          </button>
+          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" style={{ width: '100%', padding: '1.25rem', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', color: 'hsl(var(--foreground))', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer', marginTop: '0.5rem', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}>
+            Access Dashboard
+          </motion.button>
         </form>
 
-        <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '14px', color: '#a0a0b0' }}>
-          Don't have an account? <Link to="/register" style={{ color: '#b185ff', textDecoration: 'none' }}>Sign Up</Link>
-        </p>
-        
-      </div>
+        <div style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))' }}>
+          Don't have an account?{' '}
+          <span onClick={() => navigate('/register')} style={{ color: 'hsl(var(--foreground))', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: '4px' }}>Request access</span>
+        </div>
+      </motion.div>
     </div>
   );
 }

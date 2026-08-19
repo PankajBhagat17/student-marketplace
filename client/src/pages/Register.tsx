@@ -1,106 +1,170 @@
 // client/src/pages/Register.tsx
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { motion } from 'framer-motion';
 
-const Register = () => {
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+export default function Register() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState(''); // <-- NEW STATE
+  const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
-
     try {
-      const response = await fetch('https://student-marketplace-ho49.onrender.com/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          first_name: firstName,
-          last_name: lastName,
-          email: email,
-          password: password,
-          phone_number: phoneNumber, // <-- SEND TO BACKEND
-        }),
+      const res = await axios.post('https://student-marketplace-ho49.onrender.com/api/auth/register', { 
+        name, 
+        email, 
+        password, 
+        phone 
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Registration failed.');
-      }
-
-      setSuccess('Account created successfully! You can now go log in.');
-      
-      // Clear the form
-      setFirstName('');
-      setLastName('');
-      setEmail('');
-      setPassword('');
-      setPhoneNumber(''); // <-- CLEAR FIELD
-
+      localStorage.setItem('token', res.data.token);
+      navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message);
+      setError(err.response?.data?.message || 'Registration failed. Please check your details.');
     }
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', marginTop: '50px' }}>
-      <div style={{ background: '#1e1e24', padding: '40px', borderRadius: '8px', color: 'white', width: '350px' }}>
-        <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>Sign Up</h2>
-        
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          <div>
-            <label>First Name</label>
-            <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} style={{ width: '100%', padding: '8px', marginTop: '5px', borderRadius: '4px', border: 'none', background: '#2b2b36', color: 'white' }} />
-          </div>
+    <div style={{ position: 'relative', minHeight: '100vh', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+      
+      {/* PERFECTLY FIXED LOCAL VIDEO BACKGROUND */}
+      <video
+        src="/campus-bg.mp4.mp4"
+        autoPlay loop muted playsInline
+        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: -1 }}
+      />
+      {/* Dark Overlay for text readability */}
+      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(5, 15, 25, 0.4)', zIndex: 0 }} />
 
-          <div>
-            <label>Last Name</label>
-            <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} style={{ width: '100%', padding: '8px', marginTop: '5px', borderRadius: '4px', border: 'none', background: '#2b2b36', color: 'white' }} />
-          </div>
+      {/* Cinematic Animated Form Card */}
+      <motion.div 
+        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="liquid-glass"
+        style={{ 
+          position: 'relative',
+          zIndex: 10,
+          width: '100%', 
+          maxWidth: '420px', 
+          padding: '3rem 2.5rem', 
+          borderRadius: '24px', 
+          margin: '20px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' 
+        }}
+      >
+        <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', fontWeight: 'normal', margin: '0 0 0.5rem 0', letterSpacing: '-1px', color: 'hsl(var(--foreground))' }}>
+            Join the campus.
+          </h1>
+          <p style={{ color: 'hsl(var(--muted-foreground))', fontSize: '0.95rem', margin: 0 }}>
+            Create your account to start trading.
+          </p>
+        </div>
 
-          {/* --- NEW PHONE NUMBER INPUT --- */}
-          <div>
-            <label>WhatsApp Number (with Country Code)</label>
+        {error && (
+          <motion.div 
+            initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+            style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', padding: '0.75rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.85rem', textAlign: 'center' }}
+          >
+            {error}
+          </motion.div>
+        )}
+
+        <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))', marginLeft: '0.25rem' }}>Full Name</label>
             <input 
               type="text" 
+              value={name} 
+              onChange={(e) => setName(e.target.value)} 
               required
-              placeholder="e.g. 919876543210"
-              value={phoneNumber} 
-              onChange={(e) => setPhoneNumber(e.target.value)} 
-              style={{ width: '100%', padding: '8px', marginTop: '5px', borderRadius: '4px', border: 'none', background: '#2b2b36', color: 'white' }}
+              placeholder="First Last"
+              style={{ 
+                width: '100%', padding: '1rem 1.25rem', backgroundColor: 'rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: 'hsl(var(--foreground))', fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box'
+              }}
+              onFocus={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.4)'}
+              onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'}
             />
           </div>
 
-          <div>
-            <label>Email</label>
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: '100%', padding: '8px', marginTop: '5px', borderRadius: '4px', border: 'none', background: '#2b2b36', color: 'white' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))', marginLeft: '0.25rem' }}>University Email</label>
+            <input 
+              type="email" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              required
+              placeholder="student@university.edu"
+              style={{ 
+                width: '100%', padding: '1rem 1.25rem', backgroundColor: 'rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: 'hsl(var(--foreground))', fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box'
+              }}
+              onFocus={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.4)'}
+              onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'}
+            />
           </div>
 
-          <div>
-            <label>Password</label>
-            <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '100%', padding: '8px', marginTop: '5px', borderRadius: '4px', border: 'none', background: '#2b2b36', color: 'white' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))', marginLeft: '0.25rem' }}>Phone Number (for WhatsApp)</label>
+            <input 
+              type="tel" 
+              value={phone} 
+              onChange={(e) => setPhone(e.target.value)} 
+              required
+              placeholder="+91 98765 43210"
+              style={{ 
+                width: '100%', padding: '1rem 1.25rem', backgroundColor: 'rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: 'hsl(var(--foreground))', fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box'
+              }}
+              onFocus={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.4)'}
+              onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'}
+            />
           </div>
 
-          {error && <div style={{ color: '#ff6b6b', background: '#3b1f1f', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>{error}</div>}
-          {success && <div style={{ color: '#51cf66', background: '#1f3b24', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>{success}</div>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))', marginLeft: '0.25rem' }}>Password</label>
+            <input 
+              type="password" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              required
+              placeholder="••••••••"
+              style={{ 
+                width: '100%', padding: '1rem 1.25rem', backgroundColor: 'rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: 'hsl(var(--foreground))', fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box'
+              }}
+              onFocus={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.4)'}
+              onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'}
+            />
+          </div>
 
-          <button type="submit" style={{ padding: '12px', background: '#b185ff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginTop: '10px' }}>
+          <motion.button 
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            type="submit" 
+            style={{ 
+              width: '100%', padding: '1.25rem', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', color: 'hsl(var(--foreground))', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer', marginTop: '0.5rem', transition: 'background 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+          >
             Create Account
-          </button>
+          </motion.button>
         </form>
 
-        <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '14px' }}>
-          Already have an account? <a href="/login" style={{ color: '#b185ff', textDecoration: 'none' }}>Log In</a>
-        </p>
-      </div>
+        <div style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))' }}>
+          Already have an account?{' '}
+          <span 
+            onClick={() => navigate('/login')} 
+            style={{ color: 'hsl(var(--foreground))', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: '4px' }}
+          >
+            Sign in
+          </span>
+        </div>
+      </motion.div>
     </div>
   );
-};
-
-export default Register;
+}
