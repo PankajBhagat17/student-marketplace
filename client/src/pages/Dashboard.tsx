@@ -223,13 +223,18 @@ export default function Dashboard() {
         <Toaster position="bottom-right" toastOptions={{ style: { background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' } }} />
 
         <div className="amz-header-container" style={{ width: '100%', boxSizing: 'border-box' }}>
-          <div className="amz-top-row" style={{ padding: '15px 4vw', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          
+          {/* Top Row: Menu & Logo Permanently Left-Aligned */}
+          <div className="amz-top-row" style={{ padding: '15px 4vw', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', boxSizing: 'border-box' }}>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'flex-start', margin: 0 }}>
               <button className="liquid-glass" style={{ padding: '8px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer' }} onClick={() => setIsSidebarOpen(true)}>☰</button>
-              <h2 className="amz-brand" style={{ fontSize: 'clamp(1.4rem, 2.5vw, 1.8rem)', margin: 0 }}>Campus<span style={{ color: '#febd69', fontStyle: 'italic' }}>Trade</span></h2>
+              <h2 className="amz-brand" style={{ fontSize: 'clamp(1.4rem, 2.5vw, 1.8rem)', margin: 0, textAlign: 'left', display: 'inline-block' }}>
+                Campus<span style={{ color: '#febd69', fontStyle: 'italic' }}>Trade</span>
+              </h2>
             </div>
             
-            <div className="amz-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+            <div className="amz-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', justifyContent: 'flex-end' }}>
               {user && user.email === 'bhagatpankaj7249@gmail.com' && (
                 <button className="liquid-glass" onClick={() => window.open('https://student-marketplace-ho49.onrender.com/api/admin/export-data')} 
                         style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.8rem', cursor: 'pointer' }}>
@@ -270,7 +275,7 @@ export default function Dashboard() {
             <button onClick={applyAdvancedFilters}>🔍</button>
           </div>
 
-          {/* RESPONSIVE NAV ROW FOR BUTTONS & CATEGORIES */}
+          {/* Nav Row for Categories & Actions */}
           <div className="amz-nav-row" style={{ padding: '10px 4vw', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
             <div style={{ display: 'flex', gap: '15px', overflowX: 'auto', flex: '1 1 auto', scrollbarWidth: 'none', alignItems: 'center', minWidth: '200px' }}>
               <button className={filterCategory === 'All' ? 'active' : ''} onClick={() => setFilterCategory('All')}>All</button>
@@ -280,7 +285,6 @@ export default function Dashboard() {
               <button className={filterCategory === 'Lost & Found' ? 'active' : ''} onClick={() => setFilterCategory('Lost & Found')}>Lost & Found</button>
             </div>
             
-            {/* Fully Responsive Action Buttons */}
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
               <button 
                 onClick={() => { 
