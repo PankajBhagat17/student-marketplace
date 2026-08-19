@@ -19,18 +19,17 @@ export default function Landing() {
       {/* Dark Overlay */}
       <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(5, 15, 25, 0.45)', zIndex: 1 }} />
 
-      {/* Modern Single-Row Desktop / Responsive Navbar */}
-      <nav style={{ position: 'relative', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '25px 4vw', width: '100%', boxSizing: 'border-box' }}>
+      {/* Modern Responsive Navbar */}
+      <nav style={{ position: 'relative', zIndex: 10, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', padding: '22px 4vw', width: '100%', boxSizing: 'border-box', gap: '15px' }}>
         
-        {/* Logo */}
-        <div style={{ fontSize: 'clamp(1.8rem, 2.5vw, 2.3rem)', letterSpacing: '-0.03em', color: 'hsl(var(--foreground))', fontFamily: "var(--font-display)", fontWeight: 500 }}>
-          CampusTrade
+        {/* Logo with yellow italic Trade */}
+        <div style={{ fontSize: 'clamp(1.6rem, 2.5vw, 2.3rem)', letterSpacing: '-0.03em', color: 'hsl(var(--foreground))', fontFamily: "var(--font-display)", fontWeight: 500 }}>
+          Campus<span style={{ color: '#febd69', fontStyle: 'italic' }}>Trade</span>
         </div>
 
-        {/* Center Links (Home, Dashboard, About) */}
-        <div style={{ display: 'flex', gap: '2.5rem', fontSize: '1rem', color: 'hsl(var(--muted-foreground))', alignItems: 'center' }}>
-          <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: 'hsl(var(--foreground))', cursor: 'pointer', padding: 0, fontWeight: 500, fontSize: '1rem' }}>Home</button>
-          <button onClick={() => navigate('/dashboard')} style={{ background: 'none', border: 'none', color: 'hsl(var(--muted-foreground))', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>Dashboard</button>
+        {/* Center Links (Home & About in between) */}
+        <div style={{ display: 'flex', gap: '2rem', fontSize: '1rem', color: 'hsl(var(--muted-foreground))', alignItems: 'center' }}>
+          <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: 'hsl(var(--muted-foreground))', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>Home</button>
           <button onClick={() => setModalType('about')} style={{ background: 'none', border: 'none', color: 'hsl(var(--muted-foreground))', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>About</button>
         </div>
 
@@ -45,15 +44,15 @@ export default function Landing() {
       </nav>
 
       {/* Perfectly Centered Hero Content */}
-      <main style={{ position: 'relative', zIndex: 10, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 5vw', boxSizing: 'border-box', marginTop: '-40px' }}>
+      <main style={{ position: 'relative', zIndex: 10, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 5vw', boxSizing: 'border-box', margin: 'auto 0' }}>
         <h1 
           className="animate-fade-rise"
-          style={{ fontSize: 'clamp(2.5rem, 6vw, 5.2rem)', lineHeight: 1.08, letterSpacing: '-1.5px', maxWidth: '1050px', fontWeight: 400, color: 'hsl(var(--foreground))', fontFamily: "var(--font-display)", margin: 0 }}
+          style={{ fontSize: 'clamp(2.3rem, 6.5vw, 5.2rem)', lineHeight: 1.08, letterSpacing: '-1.5px', maxWidth: '1050px', fontWeight: 400, color: 'hsl(var(--foreground))', fontFamily: "var(--font-display)", margin: 0 }}
         >
           Where <em style={{ fontStyle: 'normal', color: 'hsl(var(--muted-foreground))' }}>campus life</em> finds its <em style={{ fontStyle: 'normal', color: 'hsl(var(--muted-foreground))' }}>value.</em>
         </h1>
         
-        <p className="animate-fade-rise-delay" style={{ color: 'hsl(var(--muted-foreground))', fontSize: 'clamp(1rem, 1.2vw, 1.15rem)', maxWidth: '38rem', marginTop: '1.75rem', lineHeight: 1.6 }}>
+        <p className="animate-fade-rise-delay" style={{ color: 'hsl(var(--muted-foreground))', fontSize: 'clamp(0.95rem, 1.3vw, 1.15rem)', maxWidth: '38rem', marginTop: '1.75rem', lineHeight: 1.6 }}>
           The exclusive digital marketplace for our university. Buy textbooks, sell electronics, discover student services, and connect with your peers securely.
         </p>
         
@@ -82,7 +81,7 @@ export default function Landing() {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                 <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.8rem', margin: 0, fontWeight: 'normal', color: 'white' }}>
-                  About CampusTrade
+                  About Campus<span style={{ color: '#febd69', fontStyle: 'italic' }}>Trade</span>
                 </h2>
                 <button onClick={() => setModalType(null)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
               </div>
