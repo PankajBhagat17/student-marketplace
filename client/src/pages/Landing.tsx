@@ -20,16 +20,17 @@ export default function Landing() {
       <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(5, 15, 25, 0.45)', zIndex: 1 }} />
 
       {/* Modern Responsive Navbar */}
-      <nav style={{ position: 'relative', zIndex: 10, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', padding: '22px 4vw', width: '100%', boxSizing: 'border-box', gap: '15px' }}>
+      <nav style={{ position: 'relative', zIndex: 10, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', padding: '22px 4vw 10px 4vw', width: '100%', boxSizing: 'border-box', gap: '15px' }}>
         
-        {/* Logo with yellow italic Trade */}
-        <div style={{ fontSize: 'clamp(1.6rem, 2.5vw, 2.3rem)', letterSpacing: '-0.03em', color: 'hsl(var(--foreground))', fontFamily: "var(--font-display)", fontWeight: 500 }}>
+        {/* Larger Logo */}
+        <div style={{ fontSize: 'clamp(2rem, 3.2vw, 2.8rem)', letterSpacing: '-0.03em', color: 'hsl(var(--foreground))', fontFamily: "var(--font-display)", fontWeight: 500 }}>
           Campus<span style={{ color: '#febd69', fontStyle: 'italic' }}>Trade</span>
         </div>
 
-        {/* Center Links (Home & About in between) */}
-        <div style={{ display: 'flex', gap: '2rem', fontSize: '1rem', color: 'hsl(var(--muted-foreground))', alignItems: 'center' }}>
+        {/* Center Links (Home, Dashboard, About) positioned slightly down relative to CampusTrade */}
+        <div style={{ display: 'flex', gap: '1.5rem', fontSize: '1rem', color: 'hsl(var(--muted-foreground))', alignItems: 'center', marginTop: '8px' }}>
           <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: 'hsl(var(--muted-foreground))', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>Home</button>
+          <button onClick={() => navigate('/dashboard')} style={{ background: 'none', border: 'none', color: 'hsl(var(--muted-foreground))', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>Dashboard</button>
           <button onClick={() => setModalType('about')} style={{ background: 'none', border: 'none', color: 'hsl(var(--muted-foreground))', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>About</button>
         </div>
 
@@ -44,7 +45,7 @@ export default function Landing() {
       </nav>
 
       {/* Perfectly Centered Hero Content */}
-      <main style={{ position: 'relative', zIndex: 10, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 5vw', boxSizing: 'border-box', margin: 'auto 0' }}>
+      <main style={{ position: 'relative', zIndex: 10, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 5vw', boxSizing: 'border-box', margin: 'auto' }}>
         <h1 
           className="animate-fade-rise"
           style={{ fontSize: 'clamp(2.3rem, 6.5vw, 5.2rem)', lineHeight: 1.08, letterSpacing: '-1.5px', maxWidth: '1050px', fontWeight: 400, color: 'hsl(var(--foreground))', fontFamily: "var(--font-display)", margin: 0 }}
