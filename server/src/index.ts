@@ -181,6 +181,19 @@ app.post('/api/listings', authenticateToken, upload.single('image'), async (req:
     console.log("📥 PARSED FRONTEND DATA:", JSON.stringify(req.body, null, 2));
     
     const { title, price, category } = req.body;
+
+    // --- BACKEND SAFETY POLICY FILTER ---
+    const forbiddenKeywords = ['alcohol', 'beer', 'wine', 'drug', 'weed', 'cannabis', 'vape', 'cigarette', 'tobacco', 'pill', 'weapon', 'gun', 'knife'];
+    const titleToCheck = title ? title.toLowerCase() : '';
+    const isBanned = forbiddenKeywords.some(word => titleToCheck.includes(word));
+
+    if (isBanned) {
+      return res.status(400).json({ 
+        error: 'Policy Violation: Items involving alcohol, drugs, or weapons cannot be listed on CampusTrade.' 
+      });
+    }
+    // ------------------------------------
+
     const seller_email = req.user?.email || 'unknown@university.edu';
     
     const currentUser: any = await User.findOne({ where: { email: seller_email } });
@@ -195,7 +208,7 @@ app.post('/api/listings', authenticateToken, upload.single('image'), async (req:
 
     console.log("✅ SAVED TO DATABASE SUCCESSFULLY!");
     res.status(201).json(newListing);
-} catch (err: any) {
+  } catch (err: any) {
     console.error("🔥 ROUTE ERROR:", err.message);
     res.status(500).json({ error: 'Server error creating listing' });
   }

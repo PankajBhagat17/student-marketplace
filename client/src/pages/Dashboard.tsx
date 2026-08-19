@@ -88,6 +88,17 @@ export default function Dashboard() {
   const handleCreateListing = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!checkAuth()) return;
+
+    // --- CAMPUS SAFETY POLICY FILTER FOR ILLEGAL ITEMS ---
+    const forbiddenKeywords = ['alcohol', 'beer', 'wine', 'drug', 'weed', 'cannabis', 'vape', 'cigarette', 'tobacco', 'pill', 'weapon', 'gun', 'knife'];
+    const lowerTitle = newTitle.toLowerCase();
+    const hasForbiddenWord = forbiddenKeywords.some(word => lowerTitle.includes(word));
+
+    if (hasForbiddenWord) {
+      toast.error('Listing rejected: Items involving alcohol, drugs, or weapons violate campus safety rules.');
+      return; 
+    }
+
     const token = localStorage.getItem('token');
     const toastId = toast.loading('Compressing & Posting...'); 
     try {
